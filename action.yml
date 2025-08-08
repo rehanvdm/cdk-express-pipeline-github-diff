@@ -1,6 +1,6 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: cdk-express-pipeline-github-diff
+description: Outputs the CDK Express Pipeline diff on a GitHub PR
+author: rehanvdm
 
 # Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
@@ -9,15 +9,9 @@ branding:
 
 # Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
-    required: true
-    default: '1000'
-
-# Define your outputs here.
-outputs:
-  time:
-    description: Your output description here
+  cloud-assembly-directory:
+    description: The directory containing the CDK Cloud Assembly, defaults to 'cdk.out'
+    default: 'cdk.out'
 
 runs:
   using: node20
