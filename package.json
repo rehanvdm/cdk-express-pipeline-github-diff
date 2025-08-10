@@ -17,7 +17,7 @@
     "actions"
   ],
   "exports": {
-    ".": "./dist/index.js"
+    ".": "./dist/index.cjs"
   },
   "engines": {
     "node": ">=20"

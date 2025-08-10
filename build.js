@@ -13,7 +13,7 @@ const buildOptions = {
   platform: 'node',
   target: 'node20',
   format: 'cjs',
-  outfile: join(__dirname, 'dist/index.js'),
+  outfile: join(__dirname, 'dist/index.cjs'),
   sourcemap: true,
   minify: false,
   treeShaking: true,
