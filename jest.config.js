@@ -24,7 +24,13 @@ export default {
   testMatch: ['**/*.test.ts'],
   testPathIgnorePatterns: ['/dist/', '/node_modules/'],
   transform: {
-    '^.+\\.ts$': 'babel-jest'
+    '^.+\\.ts$': [
+      'esbuild-jest',
+      {
+        sourcemap: true,
+        target: 'node20'
+      }
+    ]
   },
   verbose: true
 };
