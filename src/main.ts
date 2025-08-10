@@ -35,16 +35,13 @@ async function generate(cloudAssemblyDirectory: string) {
   const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
   const patterns = stackSelectors
     .split(',')
-    .map((s) => s.trim())
+    .map((s) => s.trim().replaceAll('`', ''))
     .filter((s) => s.length > 0);
 
   if (patterns.length === 0) {
     core.setFailed('No stack selectors provided. Please specify at least one stack selector pattern.');
     return;
   }
-
-  core.info('patterns ' + patterns);
-  core.info('patterns is ** ' + (patterns[0] === '**'));
 
   const templateDiffs = await cdkToolkit.diff(cx, {
     method: DiffMethod.ChangeSet(),
