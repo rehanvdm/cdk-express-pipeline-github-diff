@@ -10,7 +10,7 @@ branding:
 # Define your inputs here.
 inputs:
   mode:
-    description: |- 
+    description: |-
       The mode to run the action in. Options are:
         - `generate`: Outputs the diff of the CDK Express Pipeline changes to file and caches it.
         - `print`: Reads all the generated diffs from file cache and prints the diff to the PR description.
@@ -28,17 +28,17 @@ inputs:
       GitHub token for API access. 
       Required for `mode: print`
   owner:
-    description: |- 
+    description: |-
       Repository owner. 
       Required for `mode: print`
       Defaults to the repository owner of the pull request event.
   repo:
-    description: |- 
+    description: |-
       Repository name. 
       Required for `mode: print`
       Defaults to the repository name of the pull request event.
   pull_number:
-    description: |- 
+    description: |-
       Pull request number.
       Required for `mode: print`
       Defaults to the pull request number of the pull request event.
@@ -47,7 +47,6 @@ inputs:
       The latest hash of the commit to the PR. 
       Required for `mode: print`
       Defaults to the head commit of the pull request event.
-
 
 runs:
   using: node20
