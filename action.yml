@@ -9,9 +9,45 @@ branding:
 
 # Define your inputs here.
 inputs:
-  cloud-assembly-directory:
-    description: The directory containing the CDK Cloud Assembly, defaults to 'cdk.out'
-    default: 'cdk.out'
+  mode:
+    description: |- 
+      The mode to run the action in. Options are:
+        - `generate`: Outputs the diff of the CDK Express Pipeline changes to file and caches it.
+        - `print`: Reads all the generated diffs from file cache and prints the diff to the PR description.
+    required: true
+  cloud_assembly_directory:
+    description: |-
+      The directory containing the CDK Cloud Assembly.
+      Defaults to 'cdk.out'
+  stack_selectors:
+    description: |-
+      The stack selectors to use for the diff. Multiple selectors can be provided as a comma-separated list.
+      Defaults to '**' (all stacks).
+  githubToken:
+    description: |-
+      GitHub token for API access. 
+      Required for `mode: print`
+  owner:
+    description: |- 
+      Repository owner. 
+      Required for `mode: print`
+      Defaults to the repository owner of the pull request event.
+  repo:
+    description: |- 
+      Repository name. 
+      Required for `mode: print`
+      Defaults to the repository name of the pull request event.
+  pull_number:
+    description: |- 
+      Pull request number.
+      Required for `mode: print`
+      Defaults to the pull request number of the pull request event.
+  git_hash:
+    description: |-
+      The latest hash of the commit to the PR. 
+      Required for `mode: print`
+      Defaults to the head commit of the pull request event.
+
 
 runs:
   using: node20

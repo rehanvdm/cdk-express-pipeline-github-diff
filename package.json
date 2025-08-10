@@ -29,6 +29,7 @@
     "format:write": "npx prettier --write .",
     "format:check": "npx prettier --check .",
     "lint": "npx eslint .",
+    "lint:fix": "npx eslint . --fix",
     "local-action": "npx @github/local-action . src/main.ts .env",
     "package": "npx rollup --config rollup.config.ts --configPlugin @rollup/plugin-typescript",
     "package:watch": "npm run package -- --watch",
@@ -38,9 +39,11 @@
   "license": "MIT",
   "dependencies": {
     "@actions/core": "^1.11.1",
+    "@actions/github": "^6.0.1",
     "@aws-cdk/toolkit-lib": "^1.4.0",
     "@octokit/core": "^7.0.3",
     "@octokit/plugin-rest-endpoint-methods": "^16.0.0",
+    "@octokit/webhooks-definitions": "^3.68.1",
     "aws-cdk-lib": "^2.208.0",
     "cdk-express-pipeline": "^1.6.0"
   },

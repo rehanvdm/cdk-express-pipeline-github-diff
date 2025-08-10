@@ -1,11 +1,11 @@
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
-//@ts-ignore
-import { generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs, ShortHandOrder } from '../src/diff';
+//@ts-expect-error TS/JS import issue but works
+import { generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs } from '../src/diff';
 import { DiffMethod, ExpandStackSelection, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as sns from 'aws-cdk-lib/aws-sns';
 import { CloudAssembly } from 'aws-cdk-lib/cx-api';
-import { CdkExpressPipeline, ExpressStack } from 'cdk-express-pipeline';
+import { CdkExpressPipeline, CdkExpressPipelineAssembly, ExpressStack } from 'cdk-express-pipeline';
 import path from 'node:path';
 import * as fs from 'node:fs';
 
@@ -109,7 +109,7 @@ describe('diff.ts', () => {
 
     // GH Action 2
     const allStackDiffs = getSavedDiffs(cdkOut);
-    const shortHandOrder: ShortHandOrder = JSON.parse(
+    const shortHandOrder: CdkExpressPipelineAssembly = JSON.parse(
       fs.readFileSync(path.join(cdkOut, 'cdk-express-pipeline.json'), 'utf-8')
     );
     const markdown = generateMarkdown(shortHandOrder, allStackDiffs);

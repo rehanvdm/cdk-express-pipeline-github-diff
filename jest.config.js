@@ -27,4 +27,4 @@ export default {
     '^.+\\.ts$': 'babel-jest'
   },
   verbose: true
-}
+};

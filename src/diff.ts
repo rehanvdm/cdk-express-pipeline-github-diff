@@ -80,8 +80,6 @@ export function generateMarkdown(order: CdkExpressPipelineAssembly, diffResult: 
   return markdown;
 }
 
-export function updateGithubPrDescription(markdown: string) {}
-
 function generateStackDiff(templateDiff: TemplateDiff): StackDiff {
   const stackDiff: StackDiff = {
     summary: {
