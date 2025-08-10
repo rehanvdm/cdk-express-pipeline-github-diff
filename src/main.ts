@@ -22,33 +22,6 @@ export async function run(): Promise<void> {
     if (mode === 'generate') await generate(cloudAssemblyDirectory);
     else if (mode === 'print') await print(cloudAssemblyDirectory);
 
-    // // Check if cloud assembly directory exists
-    // if (!fs.existsSync(cloudAssemblyDirectory)) {
-    //   core.setFailed(`Cloud assembly directory '${cloudAssemblyDirectory}' does not exist`);
-    //   return;
-    // }
-    //
-    //   // Load the CDK Express Pipeline Assembly
-    //   const assembly = new CdkExpressPipelineAssembly(cloudAssemblyDirectory);
-    //
-    //   // Generate diffs for all stacks
-    //   const templateDiffs = assembly.templateDiffs;
-    //   const diffResult = generateDiffs(templateDiffs);
-    //
-    //   if (!diffResult) {
-    //     core.info('No changes detected in any stacks');
-    //     return;
-    //   }
-    //
-    //   // Save diffs to filesystem
-    //   saveDiffs(diffResult, process.cwd());
-    //
-    //   // Generate markdown from the diffs
-    //   const markdown = generateMarkdown(assembly, diffResult);
-    //
-    //   // Update the GitHub PR description
-    //   await updateGithubPrDescription(markdown);
-
     core.info('Successfully updated PR description with CDK Express Pipeline diff');
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
@@ -59,17 +32,28 @@ async function generate(cloudAssemblyDirectory: string) {
   const cdkToolkit = new Toolkit();
   const cx = await cdkToolkit.fromAssemblyDirectory(cloudAssemblyDirectory);
 
-  const stackSelectors = core.getInput('stack-selectors', { required: true });
+  const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
   const patterns = stackSelectors
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s.length > 0);
 
+  if (patterns.length === 0) {
+    core.setFailed('No stack selectors provided. Please specify at least one stack selector pattern.');
+    return;
+  }
+
   const templateDiffs = await cdkToolkit.diff(cx, {
     method: DiffMethod.ChangeSet(),
     stacks: {
-      strategy: StackSelectionStrategy.PATTERN_MUST_MATCH,
-      patterns: patterns,
+      ...(patterns[0] === '**'
+        ? {
+            strategy: StackSelectionStrategy.ALL_STACKS
+          }
+        : {
+            strategy: StackSelectionStrategy.PATTERN_MUST_MATCH,
+            patterns: patterns
+          }),
       expand: ExpandStackSelection.NONE,
       failOnEmpty: false
     }
