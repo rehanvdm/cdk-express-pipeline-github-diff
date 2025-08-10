@@ -43,8 +43,8 @@ async function generate(cloudAssemblyDirectory: string) {
     return;
   }
 
-  console.log('patterns', patterns);
-  console.log('patterns is **', patterns[0] === '**');
+  core.info('patterns ' + patterns);
+  core.info('patterns is ** ' + (patterns[0] === '**'));
 
   const templateDiffs = await cdkToolkit.diff(cx, {
     method: DiffMethod.ChangeSet(),
