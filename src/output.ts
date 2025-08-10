@@ -15,19 +15,22 @@ export async function updateGithubPrDescription(
   const octokit = new MyOctokit({ auth: ghToken });
 
   // Get current timestamp
-  const now = new Date().toISOString();
+  const now =
+    new Date()
+      .toISOString() // e.g. "2025-08-09T15:43:22.000Z"
+      .replace('T', ' ') // "2025-08-09 15:43:22.000Z"
+      .replace(/\.\d{3}Z$/, '') + // remove milliseconds + Z
+    ' (UTC)'; // append UTC
 
   const marker = '<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->';
   const newContent = `${marker}
+<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
 ---
-> DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF
-
-## CDK Express Pipeline Diff
+## CDK Diff
 
 ${markdown}
 
----
-Git Hash: ${gitHash} | Generated At: ${now}`;
+*Generated At: ${now} from commit: ${gitHash}*`;
 
   const response = await octokit.rest.pulls.get({
     owner,
