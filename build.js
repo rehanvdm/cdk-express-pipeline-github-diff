@@ -12,13 +12,14 @@ const buildOptions = {
   bundle: true,
   platform: 'node',
   target: 'node20',
-  format: 'esm',
+  format: 'cjs',
   outfile: join(__dirname, 'dist/index.js'),
   sourcemap: true,
   minify: false,
   treeShaking: true,
   metafile: true,
-  external: ['fsevents']
+  external: ['fsevents'],
+  packages: 'external'
 };
 
 async function runBuild() {
