@@ -18,8 +18,7 @@ const buildOptions = {
   minify: false,
   treeShaking: true,
   metafile: true,
-  external: ['fsevents'],
-  packages: 'external'
+  external: ['fsevents']
 };
 
 async function runBuild() {
