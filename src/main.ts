@@ -17,7 +17,7 @@ export async function run(): Promise<void> {
       return;
     }
 
-    const cloudAssemblyDirectory = core.getInput('cloud_assembly_directory', { required: true });
+    const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: true });
 
     if (mode === 'generate') await generate(cloudAssemblyDirectory);
     else if (mode === 'print') await print(cloudAssemblyDirectory);
@@ -59,7 +59,7 @@ async function generate(cloudAssemblyDirectory: string) {
   const cdkToolkit = new Toolkit();
   const cx = await cdkToolkit.fromAssemblyDirectory(cloudAssemblyDirectory);
 
-  const stackSelectors = core.getInput('stack_selectors', { required: true });
+  const stackSelectors = core.getInput('stack-selectors', { required: true });
   const patterns = stackSelectors
     .split(',')
     .map((s) => s.trim())
@@ -86,11 +86,11 @@ async function generate(cloudAssemblyDirectory: string) {
 }
 
 async function print(cloudAssemblyDirectory: string) {
-  const githubToken = core.getInput('github_token', { required: true });
+  const githubToken = core.getInput('github-token', { required: true });
   let owner = core.getInput('owner');
   let repo = core.getInput('repo');
-  let pullNumber = parseInt(core.getInput('pull_number'));
-  let gitHash = core.getInput('git_hash');
+  let pullNumber = parseInt(core.getInput('pull-number'));
+  let gitHash = core.getInput('git-hash');
 
   if (github.context.eventName === 'pull_request') {
     const pushPayload = github.context.payload as PullRequestEvent;

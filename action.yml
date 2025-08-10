@@ -2,48 +2,46 @@ name: cdk-express-pipeline-github-diff
 description: Outputs the CDK Express Pipeline diff on a GitHub PR
 author: rehanvdm
 
-# Add your action's branding here. This will appear on the GitHub Marketplace.
 branding:
   icon: heart
   color: red
 
-# Define your inputs here.
 inputs:
   mode:
-    description: |-
+    description: |
       The mode to run the action in. Options are:
         - `generate`: Outputs the diff of the CDK Express Pipeline changes to file and caches it.
         - `print`: Reads all the generated diffs from file cache and prints the diff to the PR description.
     required: true
-  cloud_assembly_directory:
-    description: |-
+  cloud-assembly-directory:
+    description: |
       The directory containing the CDK Cloud Assembly.
       Defaults to 'cdk.out'
-  stack_selectors:
-    description: |-
+  stack-selectors:
+    description: |
       The stack selectors to use for the diff. Multiple selectors can be provided as a comma-separated list.
       Defaults to '**' (all stacks).
-  githubToken:
-    description: |-
+  github-token:
+    description: |
       GitHub token for API access. 
       Required for `mode: print`
   owner:
-    description: |-
+    description: |
       Repository owner. 
       Required for `mode: print`
       Defaults to the repository owner of the pull request event.
   repo:
-    description: |-
+    description: |
       Repository name. 
       Required for `mode: print`
       Defaults to the repository name of the pull request event.
-  pull_number:
-    description: |-
+  pull-number:
+    description: |
       Pull request number.
       Required for `mode: print`
       Defaults to the pull request number of the pull request event.
-  git_hash:
-    description: |-
+  git-hash:
+    description: |
       The latest hash of the commit to the PR. 
       Required for `mode: print`
       Defaults to the head commit of the pull request event.
