@@ -11,7 +11,15 @@ import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
 
 export async function run(): Promise<void> {
   try {
-    const isDebug = process.env.ACTIONS_STEP_DEBUG === 'true';
+    const actionsStepDebug = process.env.ACTIONS_STEP_DEBUG === 'true';
+    const runnerDebug = process.env.RUNNER_DEBUG === '1';
+    const isDebug = actionsStepDebug || runnerDebug;
+
+    if (isDebug) {
+      core.info('🐛 Debug mode enabled');
+      core.info(`Debug sources - ACTIONS_STEP_DEBUG: ${actionsStepDebug}, RUNNER_DEBUG: ${runnerDebug}`);
+    }
+
     const mode = core.getInput('mode', { required: true });
     if (mode !== 'generate' && mode !== 'print') {
       core.setFailed(`Invalid mode '${mode}' specified. Valid modes are 'generate' or 'print'.`);
@@ -45,8 +53,10 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
   }
 
   if (isDebug) {
-    core.debug(`Running in debug mode with stack selectors: ${patterns.join(', ')}`);
+    core.info(`🔍 Running in debug mode`);
+    core.debug(`Stack selectors: ${patterns.join(', ')}`);
     process.env.CDK_VERBOSE = 'true';
+    core.info('📝 CDK_VERBOSE environment variable set to true');
   }
 
   const templateDiffs = await cdkToolkit.diff(cx, {
@@ -96,7 +106,7 @@ async function print(cloudAssemblyDirectory: string) {
   );
   const markdown = generateMarkdown(shortHandOrder, allStackDiffs);
 
-  const result = await updateGithubPrDescription(owner, repo, pullNumber, githubToken, markdown, gitHash);
-  core.info(result);
-  await core.summary.addRaw(result).write({ overwrite: true });
+  await updateGithubPrDescription(owner, repo, pullNumber, githubToken, markdown, gitHash);
+  core.info(markdown);
+  await core.summary.addRaw(markdown).write({ overwrite: true });
 }
