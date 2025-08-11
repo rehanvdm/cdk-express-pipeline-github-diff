@@ -48,16 +48,14 @@ exports[`updateGithubPrDescription should replace existing marker content with n
 "This is an existing PR description
 
 <!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->
+<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
 ---
-> DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF
-
-## CDK Express Pipeline Diff
+## CDK Diff
 
 ## New Diff
 - Updated resource C
 
----
-Git Hash: abc123def456 | Generated At: 2024-01-01T12:00:00.000Z"
+*Generated At: 2024-01-01 12:00:00 (UTC) from commit: abc123def456*"
 `;
 
 exports[`updateGithubPrDescription should truncate content when it exceeds maximum length 1`] = `

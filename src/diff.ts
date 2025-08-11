@@ -57,8 +57,7 @@ export function getSavedDiffs(outputDir: string) {
 }
 
 export function generateMarkdown(order: CdkExpressPipelineAssembly, diffResult: DiffResult) {
-  let markdown = `---\n`;
-  markdown += '```diff\n';
+  let markdown = '```diff\n';
 
   order.waves.forEach((wave) => {
     markdown += `🌊 ${wave.waveId}\n`;

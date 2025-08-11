@@ -1,8 +1,7 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
 exports[`diff.ts test complex diff markdown 1`] = `
-"---
-\`\`\`diff
+"\`\`\`diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
