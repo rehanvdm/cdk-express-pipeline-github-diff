@@ -38,6 +38,12 @@ export async function run(): Promise<void> {
 }
 
 async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false) {
+  if (isDebug) {
+    core.info(`🔍 CDK Running in debug mode`);
+    process.env.CDK_VERBOSE = 'true';
+    core.info('📝 CDK_VERBOSE environment variable set to true');
+  }
+
   const cdkToolkit = new Toolkit();
   const cx = await cdkToolkit.fromAssemblyDirectory(cloudAssemblyDirectory);
 
@@ -53,10 +59,7 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
   }
 
   if (isDebug) {
-    core.info(`🔍 Running in debug mode`);
     core.debug(`Stack selectors: ${patterns.join(', ')}`);
-    process.env.CDK_VERBOSE = 'true';
-    core.info('📝 CDK_VERBOSE environment variable set to true');
   }
 
   const templateDiffs = await cdkToolkit.diff(cx, {
