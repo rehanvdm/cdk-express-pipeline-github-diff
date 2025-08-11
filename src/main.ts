@@ -42,7 +42,7 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
     core.debug(`🔍 CDK Running in debug mode`);
     process.env.CDK_VERBOSE = 'true';
     process.env.CDK_DEBUG = 'true';
-    core.debug('📝 CDK_VERBOSE environment variable set to true');
+    core.debug('📝 CDK_VERBOSE and CDK_DEBUG environment variables to true');
   }
 
   const cdkToolkit = new Toolkit();
