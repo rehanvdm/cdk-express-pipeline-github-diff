@@ -91,7 +91,7 @@ async function generateTemplateDiffs(diffFunc: (opts?: AssemblyDiffFuncArgs) => 
     });
     templateDiffs = {
       ...templateDiffs,
-      [stack.id]: Object.values(templateDiff)[0]
+      ...templateDiff
     };
   }
 

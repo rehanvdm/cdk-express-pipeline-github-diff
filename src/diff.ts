@@ -25,8 +25,9 @@ export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }): 
     return undefined;
   }
   const result: DiffResult = { stacks: {} };
-  for (const [name, templateDiff] of Object.entries(templateDiffs)) {
-    result.stacks[name] = generateStackDiff(templateDiff);
+  for (const [stackIdName, templateDiff] of Object.entries(templateDiffs)) {
+    const stackId = stackIdName.split(' ')[0];
+    result.stacks[stackId] = generateStackDiff(templateDiff);
   }
 
   return result;
