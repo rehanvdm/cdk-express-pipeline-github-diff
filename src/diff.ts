@@ -48,11 +48,14 @@ export function saveDiffs(diffResult: DiffResult, outputDir: string): void {
 export function getSavedDiffs(outputDir: string) {
   const combinedDiff: DiffResult = { stacks: {} };
   const files = fs.readdirSync(`${outputDir}/cdk-express-pipeline/diffs`);
+  console.log('files', files);
   for (const file of files) {
     const stackId = file.replace('.json', '');
     const stackDiff = JSON.parse(fs.readFileSync(`${outputDir}/cdk-express-pipeline/diffs/${file}`, 'utf-8'));
+    console.log(`${outputDir}/cdk-express-pipeline/diffs/${file}`);
     combinedDiff.stacks[stackId] = stackDiff;
   }
+  console.log('combinedDiff', combinedDiff);
   return combinedDiff;
 }
 

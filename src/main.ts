@@ -103,6 +103,7 @@ async function print(cloudAssemblyDirectory: string) {
   }
 
   const allStackDiffs = getSavedDiffs(cloudAssemblyDirectory);
+  core.info(`Found ${Object.keys(allStackDiffs.stacks).length} stack diffs` + JSON.stringify(allStackDiffs));
   const shortHandOrder: CdkExpressPipelineAssembly = JSON.parse(
     fs.readFileSync(path.join(cloudAssemblyDirectory, 'cdk-express-pipeline.json'), 'utf-8')
   );
