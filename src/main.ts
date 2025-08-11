@@ -11,6 +11,7 @@ import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
 
 export async function run(): Promise<void> {
   try {
+    const isDebug = process.env.ACTIONS_STEP_DEBUG === 'true';
     const mode = core.getInput('mode', { required: true });
     if (mode !== 'generate' && mode !== 'print') {
       core.setFailed(`Invalid mode '${mode}' specified. Valid modes are 'generate' or 'print'.`);
@@ -19,7 +20,7 @@ export async function run(): Promise<void> {
 
     const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: true });
 
-    if (mode === 'generate') await generate(cloudAssemblyDirectory);
+    if (mode === 'generate') await generate(cloudAssemblyDirectory, isDebug);
     else if (mode === 'print') await print(cloudAssemblyDirectory);
 
     core.info('Successfully updated PR description with CDK Express Pipeline diff');
@@ -28,7 +29,7 @@ export async function run(): Promise<void> {
   }
 }
 
-async function generate(cloudAssemblyDirectory: string) {
+async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false) {
   const cdkToolkit = new Toolkit();
   const cx = await cdkToolkit.fromAssemblyDirectory(cloudAssemblyDirectory);
 
@@ -41,6 +42,11 @@ async function generate(cloudAssemblyDirectory: string) {
   if (patterns.length === 0) {
     core.setFailed('No stack selectors provided. Please specify at least one stack selector pattern.');
     return;
+  }
+
+  if (isDebug) {
+    core.debug(`Running in debug mode with stack selectors: ${patterns.join(', ')}`);
+    process.env.CDK_VERBOSE = 'true';
   }
 
   const templateDiffs = await cdkToolkit.diff(cx, {
