@@ -36,6 +36,41 @@ export async function run(): Promise<void> {
   }
 }
 
+export async function getCurrentJobUrl(token: string) {
+  const octokit = github.getOctokit(token);
+
+  // Get all jobs for this workflow run
+  const jobsResponse = await octokit.rest.actions.listJobsForWorkflowRun({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    run_id: github.context.runId
+  });
+
+  // Find the job that matches the current job's name
+  const currentJob = jobsResponse.data.jobs.find((job) => job.name === github.context.job);
+
+  if (!currentJob) {
+    throw new Error(`Could not find job with name "${github.context.job}"`);
+  }
+
+  return currentJob.id;
+}
+
+// Example usage:
+(async () => {
+  try {
+    const token = process.env.GITHUB_TOKEN;
+    if (!token) {
+      throw new Error('GITHUB_TOKEN is required in environment variables');
+    }
+
+    const jobUrl = await getCurrentJobUrl(token);
+    core.info(`Current Job URL: ${jobUrl}`);
+  } catch (err) {
+    core.setFailed((err as Error).message);
+  }
+})();
+
 function getCacheKey(stackSelector?: string): string {
   let ret = `cdk-diff-pipeline-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}-`;
   if (stackSelector) {
@@ -66,6 +101,7 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
     core.debug(`🔍 CDK Running in debug mode`);
   }
 
+  const githubToken = core.getInput('github-token', { required: true });
   const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
   let gitHash = core.getInput('git-hash');
   if (github.context.eventName === 'pull_request') {
@@ -73,16 +109,21 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
     if (!gitHash) gitHash = pushPayload.pull_request.head.sha;
   }
 
-  let cdkConsole = '';
+  let cdkSummaryDiff = '';
   const cdkToolkit = new Toolkit({
     color: true,
     ioHost: {
       notify: async function (msg) {
         printCdkIoToGitHub(msg);
-        cdkConsole += msg.message + '\n';
+        if (msg.level === 'result') {
+          cdkSummaryDiff += msg.message + '\n';
+        }
       },
       requestResponse: async function (msg) {
         printCdkIoToGitHub(msg);
+        if (msg.level === 'result') {
+          cdkSummaryDiff += msg.message + '\n';
+        }
         return msg.defaultResponse;
       }
     }
@@ -117,10 +158,13 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
 
   // Output summary on Actions page
   const now = getNowFormated();
-  const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
-  const summary = ` ${cdkConsole}
+  const jobId = await getCurrentJobUrl(githubToken);
+  const jobRunUrl =
+    `${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/actions/runs/` +
+    `${github.context.runId}/job/${jobId}`;
+  const summary = ` \`\`\`${cdkSummaryDiff}\`\`\`
   
-*Generated At: ${now} from commit: ${gitHash} in [action run](${runUrl})*`;
+*Generated At: ${now} from commit: ${gitHash} in [action run](${jobRunUrl})*`;
   await core.summary.addRaw(summary).write({ overwrite: true });
 
   const stackDiffs = generateDiffs(templateDiffs);
