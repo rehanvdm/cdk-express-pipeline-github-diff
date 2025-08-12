@@ -75,10 +75,11 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
 
   let cdkConsole = '';
   const cdkToolkit = new Toolkit({
+    color: true,
     ioHost: {
       notify: async function (msg) {
         printCdkIoToGitHub(msg);
-        cdkConsole += msg + '\n';
+        cdkConsole += msg.message + '\n';
       },
       requestResponse: async function (msg) {
         printCdkIoToGitHub(msg);
