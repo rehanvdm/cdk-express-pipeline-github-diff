@@ -3,6 +3,16 @@ import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
 
 const MAX_DESCRIPTION_LENGTH = 262145;
 
+export function getNowFormated() {
+  return (
+    new Date()
+      .toISOString() // e.g. "2025-08-09T15:43:22.000Z"
+      .replace('T', ' ') // "2025-08-09 15:43:22.000Z"
+      .replace(/\.\d{3}Z$/, '') + // remove milliseconds + Z
+    ' (UTC)'
+  );
+}
+
 export async function updateGithubPrDescription(
   owner: string,
   repo: string,
@@ -14,14 +24,7 @@ export async function updateGithubPrDescription(
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
 
-  // Get current timestamp
-  const now =
-    new Date()
-      .toISOString() // e.g. "2025-08-09T15:43:22.000Z"
-      .replace('T', ' ') // "2025-08-09 15:43:22.000Z"
-      .replace(/\.\d{3}Z$/, '') + // remove milliseconds + Z
-    ' (UTC)'; // append UTC
-
+  const now = getNowFormated();
   const marker = '<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->';
   const newContent = `${marker}
 <!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->

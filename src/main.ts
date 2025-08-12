@@ -2,22 +2,21 @@ import * as core from '@actions/core';
 import * as github from '@actions/github';
 //@ts-expect-error TS/JS import issue but works
 import { PullRequestEvent } from '@octokit/webhooks-definitions/schema';
-import { generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs } from './diff.js';
-import { DiffMethod, ExpandStackSelection, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
+import { generateDiffs, generateMarkdown, getDiffsDir, getSavedDiffs, saveDiffs } from './diff.js';
+import { DiffMethod, ExpandStackSelection, IoMessage, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import path from 'node:path';
 import fs from 'node:fs';
-import { updateGithubPrDescription } from './output.js';
+import { getNowFormated, updateGithubPrDescription } from './output.js';
 import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
+import * as cache from '@actions/cache';
+import { createHash } from 'crypto';
 
 export async function run(): Promise<void> {
   try {
-    const actionsStepDebug = process.env.ACTIONS_STEP_DEBUG === 'true';
-    const runnerDebug = process.env.RUNNER_DEBUG === '1';
-    const isDebug = actionsStepDebug || runnerDebug;
+    const isDebug = core.isDebug();
 
     if (isDebug) {
       core.info('🐛 Debug mode enabled');
-      core.info(`Debug sources - ACTIONS_STEP_DEBUG: ${actionsStepDebug}, RUNNER_DEBUG: ${runnerDebug}`);
     }
 
     const mode = core.getInput('mode', { required: true });
@@ -37,28 +36,66 @@ export async function run(): Promise<void> {
   }
 }
 
+function getCacheKey(stackSelector?: string): string {
+  let ret = `cdk-diff-pipeline-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}-`;
+  if (stackSelector) {
+    ret += createHash('md5').update(stackSelector).digest('hex');
+  }
+  return ret;
+}
+function printCdkIoToGitHub(msg: IoMessage<unknown>): void {
+  switch (msg.level) {
+    case 'info':
+    case 'result':
+      core.info(msg.message);
+      break;
+    case 'warn':
+      core.warning(msg.message);
+      break;
+    case 'error':
+      core.error(msg.message);
+      break;
+    case 'debug':
+    case 'trace':
+      core.debug(msg.message);
+      break;
+  }
+}
 async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false) {
   if (isDebug) {
     core.debug(`🔍 CDK Running in debug mode`);
-    process.env.CDK_VERBOSE = 'true';
-    process.env.CDK_DEBUG = 'true';
-    core.debug('📝 CDK_VERBOSE and CDK_DEBUG environment variables to true');
   }
 
-  const cdkToolkit = new Toolkit();
+  const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
+  let gitHash = core.getInput('git-hash');
+  if (github.context.eventName === 'pull_request') {
+    const pushPayload = github.context.payload as PullRequestEvent;
+    if (!gitHash) gitHash = pushPayload.pull_request.head.sha;
+  }
+
+  let cdkConsole = '';
+  const cdkToolkit = new Toolkit({
+    ioHost: {
+      notify: async function (msg) {
+        printCdkIoToGitHub(msg);
+        cdkConsole += msg + '\n';
+      },
+      requestResponse: async function (msg) {
+        printCdkIoToGitHub(msg);
+        return msg.defaultResponse;
+      }
+    }
+  });
   const cx = await cdkToolkit.fromAssemblyDirectory(cloudAssemblyDirectory);
 
-  const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
   const patterns = stackSelectors
     .split(',')
     .map((s) => s.trim().replaceAll('`', ''))
     .filter((s) => s.length > 0);
-
   if (patterns.length === 0) {
     core.setFailed('No stack selectors provided. Please specify at least one stack selector pattern.');
     return;
   }
-
   core.debug(`Stack selectors: ${patterns.join(', ')}`);
 
   const templateDiffs = await cdkToolkit.diff(cx, {
@@ -77,6 +114,14 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
     }
   });
 
+  // Output summary on Actions page
+  const now = getNowFormated();
+  const runUrl = `${process.env.GITHUB_SERVER_URL}/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`;
+  const summary = ` ${cdkConsole}
+  
+*Generated At: ${now} from commit: ${gitHash} in [action run](${runUrl})*`;
+  await core.summary.addRaw(summary).write({ overwrite: true });
+
   const stackDiffs = generateDiffs(templateDiffs);
   if (!stackDiffs) {
     core.info('No changes detected in any stacks');
@@ -85,6 +130,11 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
 
   saveDiffs(stackDiffs, cloudAssemblyDirectory);
   core.info('Successfully generated CDK Express Pipeline diffs');
+
+  const savedDir = getDiffsDir(cloudAssemblyDirectory);
+  const cacheKey = getCacheKey(stackSelectors);
+  const savedKey = await cache.saveCache([savedDir], cacheKey);
+  core.info(`Successfully cached CDK Express Pipeline diffs with key: ${savedKey}`);
 }
 
 async function print(cloudAssemblyDirectory: string) {
@@ -102,6 +152,15 @@ async function print(cloudAssemblyDirectory: string) {
     if (!gitHash) gitHash = pushPayload.pull_request.head.sha;
   }
 
+  const savedDir = getDiffsDir(cloudAssemblyDirectory);
+  const cacheKey = getCacheKey();
+  const restoredKey = await cache.restoreCache([savedDir], cacheKey);
+  if (restoredKey) {
+    core.info(`Successfully restored CDK Express Pipeline diffs from cache with key: ${restoredKey}`);
+  } else {
+    core.info(`No cached CDK Express Pipeline diffs found with key: + ${cacheKey}`);
+  }
+
   const allStackDiffs = getSavedDiffs(cloudAssemblyDirectory);
   core.info(`Found ${Object.keys(allStackDiffs.stacks).length} stack diffs` + JSON.stringify(allStackDiffs));
   const shortHandOrder: CdkExpressPipelineAssembly = JSON.parse(
@@ -111,5 +170,8 @@ async function print(cloudAssemblyDirectory: string) {
 
   await updateGithubPrDescription(owner, repo, pullNumber, githubToken, markdown, gitHash);
   core.info(markdown);
-  await core.summary.addRaw(markdown).write({ overwrite: true });
 }
+
+// async function ghCahceSave() {
+//
+// }

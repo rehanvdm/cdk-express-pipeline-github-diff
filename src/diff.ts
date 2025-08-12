@@ -20,7 +20,7 @@ export type StackDiff = {
   markdown: string;
 };
 
-export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }): DiffResult | undefined {
+export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }) {
   if (Object.keys(templateDiffs).length === 0) {
     return undefined;
   }
@@ -33,51 +33,53 @@ export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }): 
   return result;
 }
 
-export function saveDiffs(diffResult: DiffResult, outputDir: string): void {
+export function getDiffsDir(outputDir: string) {
+  return `${outputDir}/cdk-express-pipeline/diffs`;
+}
+export function saveDiffs(diffResult: DiffResult, outputDir: string) {
   if (Object.keys(diffResult.stacks).length === 0) {
     return;
   }
+  const diffsDir = getDiffsDir(outputDir);
   for (const [stackNameId, stackDiff] of Object.entries(diffResult.stacks)) {
-    if (!fs.existsSync(`${outputDir}/cdk-express-pipeline/diffs`)) {
-      fs.mkdirSync(`${outputDir}/cdk-express-pipeline/diffs`, { recursive: true });
+    if (!fs.existsSync(diffsDir)) {
+      fs.mkdirSync(diffsDir, { recursive: true });
     }
-    const filePath = `${outputDir}/cdk-express-pipeline/diffs/${stackNameId}.json`;
+    const filePath = `${diffsDir}/${stackNameId}.json`;
     fs.writeFileSync(filePath, JSON.stringify(stackDiff, null, 2));
   }
 }
 
 export function getSavedDiffs(outputDir: string) {
   const combinedDiff: DiffResult = { stacks: {} };
-  const files = fs.readdirSync(`${outputDir}/cdk-express-pipeline/diffs`);
-  console.log('files', files);
+  const diffsDir = getDiffsDir(outputDir);
+  const files = fs.readdirSync(diffsDir);
   for (const file of files) {
     const stackId = file.replace('.json', '');
-    const stackDiff = JSON.parse(fs.readFileSync(`${outputDir}/cdk-express-pipeline/diffs/${file}`, 'utf-8'));
-    console.log(`${outputDir}/cdk-express-pipeline/diffs/${file}`);
+    const stackDiff = JSON.parse(fs.readFileSync(`${diffsDir}/${file}`, 'utf-8'));
     combinedDiff.stacks[stackId] = stackDiff;
   }
-  console.log('combinedDiff', combinedDiff);
   return combinedDiff;
 }
 
 export function generateMarkdown(order: CdkExpressPipelineAssembly, diffResult: DiffResult) {
   let markdown = '```diff\n';
 
-  order.waves.forEach((wave) => {
+  for (const wave of order.waves) {
     markdown += `🌊 ${wave.waveId}\n`;
-    wave.stages.forEach((stage) => {
+    for (const stage of wave.stages) {
       markdown += `  🏗 ${stage.stageId}\n`;
-      stage.stacks.forEach((stack) => {
-        const stackDiff = diffResult.stacks[stack.stackId]; // + ' (' + stack.stackName + ')'
+      for (const stack of stage.stacks) {
+        const stackDiff = diffResult.stacks[stack.stackId];
         if (stackDiff) {
           markdown += `    📦 ${stack.stackName} (${stack.stackId})\n`;
           if (stackDiff.markdown) {
             markdown += `${stackDiff.markdown}\n`;
           }
         }
-      });
-    });
-  });
+      }
+    }
+  }
   markdown += '```\n';
 
   return markdown;

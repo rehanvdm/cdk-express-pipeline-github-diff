@@ -66,7 +66,21 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
 }
 
 async function generateTemplateDiffs(diffFunc: (opts?: AssemblyDiffFuncArgs) => AssemblyDiff, cdkOutChange: string) {
+  // const cdkConsole = '';
   const cdkToolkit = new Toolkit();
+  //   {
+  //   ioHost: {
+  //     notify: async function (msg) {
+  //       console.log(msg.message);
+  //       cdkConsole += stripAnsiCodes(msg.message) + '\n';
+  //     },
+  //     requestResponse: async function (msg) {
+  //       console.log(msg.message);
+  //       cdkConsole += stripAnsiCodes(msg.message) + '\n';
+  //       return msg.defaultResponse;
+  //     }
+  //   }
+  // }
 
   if (fs.existsSync(cdkOutChange)) {
     fs.rmSync(cdkOutChange, { recursive: true, force: true });
@@ -94,6 +108,8 @@ async function generateTemplateDiffs(diffFunc: (opts?: AssemblyDiffFuncArgs) => 
       ...templateDiff
     };
   }
+  // console.log('cdkConsole');
+  // console.log(cdkConsole);
 
   return templateDiffs;
 }
