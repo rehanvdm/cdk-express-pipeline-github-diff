@@ -12,9 +12,9 @@ import * as cache from '@actions/cache';
 import { createHash } from 'crypto';
 
 export async function run(): Promise<void> {
+  process.env.FORCE_COLOR = '1';
   try {
     const isDebug = core.isDebug();
-
     if (isDebug) {
       core.info('🐛 Debug mode enabled');
     }
@@ -25,10 +25,8 @@ export async function run(): Promise<void> {
       return;
     }
 
-    const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: true });
-
-    if (mode === 'generate') await generate(cloudAssemblyDirectory, isDebug);
-    else if (mode === 'print') await print(cloudAssemblyDirectory);
+    if (mode === 'generate') await generate();
+    else if (mode === 'print') await print();
 
     core.info('Successfully updated PR description with CDK Express Pipeline diff');
   } catch (error) {
@@ -91,11 +89,8 @@ function printCdkIoToGitHub(msg: IoMessage<unknown>): void {
       break;
   }
 }
-async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false) {
-  if (isDebug) {
-    core.debug(`🔍 CDK Running in debug mode`);
-  }
-
+async function generate() {
+  const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: true });
   const githubToken = core.getInput('github-token', { required: true });
   const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
   let gitHash: string;
@@ -182,13 +177,13 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
   core.info(`Successfully cached CDK Express Pipeline diffs with key: ${cacheKey} and id: ${savedKey}`);
 }
 
-async function print(cloudAssemblyDirectory: string) {
+async function print() {
+  const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: true });
   const githubToken = core.getInput('github-token', { required: true });
   let owner: string;
   let repo: string;
   let pullNumber: number;
   let gitHash: string;
-
   if (github.context.eventName === 'pull_request') {
     const pushPayload = github.context.payload as PullRequestEvent;
     owner = pushPayload.repository.owner.login;

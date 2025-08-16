@@ -17,7 +17,7 @@ inputs:
     required: false
   stack-selectors:
     description: |
-      The stack selectors to use for the diff. Multiple selectors can be provided as a comma-separated list.
+      The stack selectors to use for the CDK diff. Multiple selectors can be provided as a comma-separated list.
       Required for `mode: generate`
       Defaults to '**' (all stacks).
     required: false
@@ -32,4 +32,4 @@ inputs:
 
 runs:
   using: node20
-  main: FORCE_COLOR=1 dist/index.cjs
+  main: dist/index.cjs
