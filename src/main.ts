@@ -163,8 +163,9 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
   core.info('Successfully generated CDK Express Pipeline diffs');
 
   const savedDir = getCdkExpressPipelineDir(cloudAssemblyDirectory);
+  const pipelineOrderFile = `${cloudAssemblyDirectory}/cdk-express-pipeline.json`;
   const cacheKey = getCacheKey(stackSelectors);
-  const savedKey = await cache.saveCache([savedDir], cacheKey);
+  const savedKey = await cache.saveCache([savedDir, pipelineOrderFile], cacheKey);
   core.info(`Successfully cached CDK Express Pipeline diffs with key: ${savedKey}`);
 }
 
@@ -184,8 +185,9 @@ async function print(cloudAssemblyDirectory: string) {
   }
 
   const savedDir = getCdkExpressPipelineDir(cloudAssemblyDirectory);
+  const pipelineOrderFile = `${cloudAssemblyDirectory}/cdk-express-pipeline.json`;
   const cacheKey = getCacheKey();
-  const restoredKey = await cache.restoreCache([savedDir], cacheKey);
+  const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], cacheKey);
   if (restoredKey) {
     core.info(`Successfully restored CDK Express Pipeline diffs from cache with key: ${restoredKey}`);
   } else {
