@@ -198,6 +198,10 @@ async function print(cloudAssemblyDirectory: string) {
   const pipelineOrderFile = `${cloudAssemblyDirectory}/cdk-express-pipeline.json`;
   const cacheKeyPrefix = getCacheKey();
   const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix);
+  if (caches.length === 0) {
+    core.info(`No caches found with prefix: ${cacheKeyPrefix}`);
+    return;
+  }
   for (const c of caches) {
     const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);
     if (restoredKey) {
