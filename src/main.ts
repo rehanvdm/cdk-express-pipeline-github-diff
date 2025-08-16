@@ -39,14 +39,12 @@ export async function run(): Promise<void> {
 export async function getCurrentJobUrl(token: string, jobName: string) {
   const octokit = github.getOctokit(token);
 
-  // Get all jobs for this workflow run
   const jobsResponse = await octokit.rest.actions.listJobsForWorkflowRun({
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
     run_id: github.context.runId
   });
 
-  // Find the job that matches the current job's name
   const currentJob = jobsResponse.data.jobs.find((job) => job.name === jobName);
 
   if (!currentJob) {
@@ -63,6 +61,18 @@ function getCacheKey(stackSelector?: string): string {
   }
   return ret;
 }
+
+export async function listCachesWithPrefix(token: string, prefix: string) {
+  const octokit = github.getOctokit(token);
+
+  const caches = await octokit.rest.actions.getActionsCacheList({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo
+  });
+
+  return caches.data.actions_caches.filter((cache) => cache.key!.startsWith(prefix));
+}
+
 function printCdkIoToGitHub(msg: IoMessage<unknown>): void {
   switch (msg.level) {
     case 'info':
@@ -186,14 +196,17 @@ async function print(cloudAssemblyDirectory: string) {
 
   const savedDir = getDiffsDir(cloudAssemblyDirectory);
   const pipelineOrderFile = `${cloudAssemblyDirectory}/cdk-express-pipeline.json`;
-  const cacheKey = getCacheKey();
-  const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], cacheKey);
-  if (restoredKey) {
-    core.info(
-      `Successfully restored CDK Express Pipeline diffs from cache with key: ${cacheKey} and id: ${restoredKey}`
-    );
-  } else {
-    core.info(`No cached CDK Express Pipeline diffs found with key: ${cacheKey}`);
+  const cacheKeyPrefix = getCacheKey();
+  const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix);
+  for (const c of caches) {
+    const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);
+    if (restoredKey) {
+      core.info(
+        `Successfully restored CDK Express Pipeline diffs from cache with key: ${c.key!} and id: ${restoredKey}`
+      );
+    } else {
+      core.info(`No cached CDK Express Pipeline diffs found with key: ${c.key!}`);
+    }
   }
 
   const allStackDiffs = getSavedDiffs(cloudAssemblyDirectory);
