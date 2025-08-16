@@ -136,18 +136,11 @@ function generateStackDiff(templateDiff: TemplateDiff): StackDiff {
   return stackDiff;
 }
 
-//TODO: Let pass in more later
 function ignoreResource(change: ResourceDifference): boolean {
   const resourceType = change.oldValue?.Type ?? change.newValue?.Type;
   switch (resourceType) {
     case 'AWS::CDK::Metadata':
       return true;
-    case 'AWS::Lambda::Function': {
-      const keys = Object.keys(change.propertyUpdates);
-      if ((keys.length <= 2 && keys.includes('Code')) || keys.includes('Metadata')) {
-        return true;
-      }
-    }
   }
   return false;
 }

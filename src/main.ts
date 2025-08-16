@@ -98,10 +98,13 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
 
   const githubToken = core.getInput('github-token', { required: true });
   const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
-  let gitHash = core.getInput('git-hash');
+  let gitHash: string;
   if (github.context.eventName === 'pull_request') {
     const pushPayload = github.context.payload as PullRequestEvent;
-    if (!gitHash) gitHash = pushPayload.pull_request.head.sha;
+    gitHash = pushPayload.pull_request.head.sha;
+  } else {
+    core.setFailed('This action can only be used in a pull request context.');
+    return;
   }
   const jobName = core.getInput('job-name', { required: false }) || github.context.job;
 
@@ -181,17 +184,20 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
 
 async function print(cloudAssemblyDirectory: string) {
   const githubToken = core.getInput('github-token', { required: true });
-  let owner = core.getInput('owner');
-  let repo = core.getInput('repo');
-  let pullNumber = parseInt(core.getInput('pull-number'));
-  let gitHash = core.getInput('git-hash');
+  let owner: string;
+  let repo: string;
+  let pullNumber: number;
+  let gitHash: string;
 
   if (github.context.eventName === 'pull_request') {
     const pushPayload = github.context.payload as PullRequestEvent;
-    if (!owner) owner = pushPayload.repository.owner.login;
-    if (!repo) repo = pushPayload.repository.name;
-    if (!pullNumber) pullNumber = pushPayload.pull_request.number;
-    if (!gitHash) gitHash = pushPayload.pull_request.head.sha;
+    owner = pushPayload.repository.owner.login;
+    repo = pushPayload.repository.name;
+    pullNumber = pushPayload.pull_request.number;
+    gitHash = pushPayload.pull_request.head.sha;
+  } else {
+    core.setFailed('This action can only be used in a pull request context.');
+    return;
   }
 
   const savedDir = getDiffsDir(cloudAssemblyDirectory);
@@ -223,7 +229,3 @@ async function print(cloudAssemblyDirectory: string) {
   await updateGithubPrDescription(owner, repo, pullNumber, githubToken, markdown, gitHash);
   core.info(markdown);
 }
-
-// async function ghCahceSave() {
-//
-// }

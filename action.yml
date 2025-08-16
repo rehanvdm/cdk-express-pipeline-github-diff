@@ -2,16 +2,12 @@ name: cdk-express-pipeline-github-diff
 description: Outputs the CDK Express Pipeline diff on a GitHub PR
 author: rehanvdm
 
-branding:
-  icon: heart
-  color: red
-
 inputs:
   mode:
     description: |
       The mode to run the action in. Options are:
-        - `generate`: Outputs the diff of the CDK Express Pipeline changes to file and caches it.
-        - `print`: Reads all the generated diffs from file cache and prints the diff to the PR description.
+        - `generate`: Generates, saves the diff of the CDK Express Pipeline to file and caches it.
+        - `print`: Reads all the generated diffs from cache and updates the PR description with the diff.
     required: true
   cloud-assembly-directory:
     description: |
@@ -27,33 +23,8 @@ inputs:
     required: false
   github-token:
     description: |
-      GitHub token for API access. 
-      Required for `mode: print`
-    required: false
-  owner:
-    description: |
-      Repository owner. 
-      Required for `mode: print`
-      Defaults to the repository owner of the pull request event.
-    required: false
-  repo:
-    description: |
-      Repository name. 
-      Required for `mode: print`
-      Defaults to the repository name of the pull request event.
-    required: false
-  pull-number:
-    description: |
-      Pull request number.
-      Required for `mode: print`
-      Defaults to the pull request number of the pull request event.
-    required: false
-  git-hash:
-    description: |
-      The latest hash of the commit to the PR. 
-      Required for `mode: print`
-      Defaults to the head commit of the pull request event.
-    required: false
+      GitHub token for API access to read PR action/job info, update the PR description and read & write to the cache
+    required: true
   job-name:
     description: |
       The name of the job, to correctly link to the action logs when using a Matrix.
@@ -61,4 +32,4 @@ inputs:
 
 runs:
   using: node20
-  main: dist/index.cjs
+  main: FORCE_COLOR=1 dist/index.cjs
