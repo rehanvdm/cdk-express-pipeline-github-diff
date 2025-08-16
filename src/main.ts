@@ -56,21 +56,6 @@ export async function getCurrentJobUrl(token: string) {
   return currentJob.id;
 }
 
-// Example usage:
-(async () => {
-  try {
-    const token = process.env.GITHUB_TOKEN;
-    if (!token) {
-      throw new Error('GITHUB_TOKEN is required in environment variables');
-    }
-
-    const jobUrl = await getCurrentJobUrl(token);
-    core.info(`Current Job URL: ${jobUrl}`);
-  } catch (err) {
-    core.setFailed((err as Error).message);
-  }
-})();
-
 function getCacheKey(stackSelector?: string): string {
   let ret = `cdk-diff-pipeline-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}-`;
   if (stackSelector) {
