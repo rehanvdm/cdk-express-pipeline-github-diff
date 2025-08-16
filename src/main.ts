@@ -36,7 +36,7 @@ export async function run(): Promise<void> {
   }
 }
 
-export async function getCurrentJobUrl(token: string) {
+export async function getCurrentJobUrl(token: string, jobName: string) {
   const octokit = github.getOctokit(token);
 
   // Get all jobs for this workflow run
@@ -47,7 +47,7 @@ export async function getCurrentJobUrl(token: string) {
   });
 
   // Find the job that matches the current job's name
-  const currentJob = jobsResponse.data.jobs.find((job) => job.name === github.context.job);
+  const currentJob = jobsResponse.data.jobs.find((job) => job.name === jobName);
 
   if (!currentJob) {
     throw new Error(`Could not find job with name "${github.context.job}"`);
@@ -93,6 +93,7 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
     const pushPayload = github.context.payload as PullRequestEvent;
     if (!gitHash) gitHash = pushPayload.pull_request.head.sha;
   }
+  const jobName = core.getInput('job-name', { required: false }) || github.context.job;
 
   let cdkSummaryDiff = '';
   const cdkToolkit = new Toolkit({
@@ -143,7 +144,7 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
 
   // Output summary on Actions page
   const now = getNowFormated();
-  const jobId = await getCurrentJobUrl(githubToken);
+  const jobId = await getCurrentJobUrl(githubToken, jobName);
   const jobRunUrl =
     `${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/actions/runs/` +
     `${github.context.runId}/job/${jobId}`;
