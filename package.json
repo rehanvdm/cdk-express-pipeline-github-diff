@@ -30,7 +30,7 @@
     "format:check": "npx prettier --check .",
     "lint": "npx eslint .",
     "lint:fix": "npx eslint . --fix",
-    "local-action": "npx @github/local-action . src/main.ts .env",
+    "local-action": "npx @github/local-action . src/main/main.ts .env",
     "package": "node build.js",
     "package:watch": "node build.js --watch",
     "test": "npx jest",

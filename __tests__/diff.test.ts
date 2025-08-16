@@ -1,6 +1,6 @@
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
 //@ts-expect-error TS/JS import issue but works
-import { generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs } from '../src/diff';
+import { generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs } from '../src/utils/diff';
 import { DiffMethod, ExpandStackSelection, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as sns from 'aws-cdk-lib/aws-sns';

@@ -1,5 +1,5 @@
 //@ts-expect-error TS/JS import issue but works
-import { updateGithubPrDescription } from '../src/output';
+import { updateGithubPrDescription } from '../src/utils/output';
 
 // Mock the modules
 jest.mock('@octokit/core', () => {
