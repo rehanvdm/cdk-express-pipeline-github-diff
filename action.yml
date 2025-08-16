@@ -54,6 +54,10 @@ inputs:
       Required for `mode: print`
       Defaults to the head commit of the pull request event.
     required: false
+  job-name:
+    description: |
+      The name of the job, to correctly link to the action logs when using a Matrix.
+    required: false
 
 runs:
   using: node20
