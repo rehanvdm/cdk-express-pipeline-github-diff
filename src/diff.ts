@@ -33,14 +33,14 @@ export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }) {
   return result;
 }
 
-export function getCdkExpressPipelineDir(outputDir: string) {
-  return `${outputDir}/cdk-express-pipeline`;
+export function getDiffsDir(outputDir: string) {
+  return `${outputDir}/cdk-express-pipeline/diffs`;
 }
 export function saveDiffs(diffResult: DiffResult, outputDir: string) {
   if (Object.keys(diffResult.stacks).length === 0) {
     return;
   }
-  const diffsDir = `${getCdkExpressPipelineDir(outputDir)}/diffs`;
+  const diffsDir = getDiffsDir(outputDir);
   for (const [stackNameId, stackDiff] of Object.entries(diffResult.stacks)) {
     if (!fs.existsSync(diffsDir)) {
       fs.mkdirSync(diffsDir, { recursive: true });
@@ -52,7 +52,7 @@ export function saveDiffs(diffResult: DiffResult, outputDir: string) {
 
 export function getSavedDiffs(outputDir: string) {
   const combinedDiff: DiffResult = { stacks: {} };
-  const diffsDir = `${getCdkExpressPipelineDir(outputDir)}/diffs`;
+  const diffsDir = getDiffsDir(outputDir);
   const files = fs.readdirSync(diffsDir);
   for (const file of files) {
     const stackId = file.replace('.json', '');

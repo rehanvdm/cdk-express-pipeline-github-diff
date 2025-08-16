@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 import * as github from '@actions/github';
 //@ts-expect-error TS/JS import issue but works
 import { PullRequestEvent } from '@octokit/webhooks-definitions/schema';
-import { generateDiffs, generateMarkdown, getCdkExpressPipelineDir, getSavedDiffs, saveDiffs } from './diff.js';
+import { generateDiffs, generateMarkdown, getDiffsDir, getSavedDiffs, saveDiffs } from './diff.js';
 import { DiffMethod, ExpandStackSelection, IoMessage, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import path from 'node:path';
 import fs from 'node:fs';
@@ -162,7 +162,7 @@ async function generate(cloudAssemblyDirectory: string, isDebug: boolean = false
   saveDiffs(stackDiffs, cloudAssemblyDirectory);
   core.info('Successfully generated CDK Express Pipeline diffs');
 
-  const savedDir = getCdkExpressPipelineDir(cloudAssemblyDirectory);
+  const savedDir = getDiffsDir(cloudAssemblyDirectory);
   const pipelineOrderFile = `${cloudAssemblyDirectory}/cdk-express-pipeline.json`;
   const cacheKey = getCacheKey(stackSelectors);
   const savedKey = await cache.saveCache([savedDir, pipelineOrderFile], cacheKey);
@@ -184,7 +184,7 @@ async function print(cloudAssemblyDirectory: string) {
     if (!gitHash) gitHash = pushPayload.pull_request.head.sha;
   }
 
-  const savedDir = getCdkExpressPipelineDir(cloudAssemblyDirectory);
+  const savedDir = getDiffsDir(cloudAssemblyDirectory);
   const pipelineOrderFile = `${cloudAssemblyDirectory}/cdk-express-pipeline.json`;
   const cacheKey = getCacheKey();
   const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], cacheKey);
