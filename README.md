@@ -1,8 +1,8 @@
 # CDK Express Pipeline GitHub Diff
 
-A GitHub Action that generates and displays [CDK Express Pipeline](https://github.com/rehanvdm/cdk-express-pipeline) 
-diffs directly in your pull request description,
-providing clear visibility into infrastructure changes grouped by waves, stages and stacks.
+A GitHub Action that generates and displays [CDK Express Pipeline](https://github.com/rehanvdm/cdk-express-pipeline)
+diffs directly in your pull request description, providing clear visibility into infrastructure changes grouped by
+waves, stages and stacks.
 
 ## Features
 
@@ -106,7 +106,7 @@ jobs:
           stack-selectors: ${{ matrix.stack-group }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           job-name: ${{ matrix.job-name }}
-          
+
   print-diffs:
     needs: generate-diffs
     runs-on: ubuntu-latest
@@ -172,14 +172,16 @@ See more details in the
 ## FAQ
 
 ### What happens if I have a big diff and it exceeds the GitHub comment size limit?
-The diff will be truncated, 260kb is a lot of space and most will not have this issue. However, if you do hit the
-limit, the action will still update the pull request description up to the limit and indicate it was truncated.
-The full diff will still be available in the action summary and you can always find it in the action logs.
+
+The diff will be truncated, 260kb is a lot of space and most will not have this issue. However, if you do hit the limit,
+the action will still update the pull request description up to the limit and indicate it was truncated. The full diff
+will still be available in the action summary and you can always find it in the action logs.
 
 ### Why not places the diff in a comment(s)?
+
 Placing comments creates a lot of noise and can clutter the pull request discussion, especially when doing many parallel
 diffs where each diff is a comment. Instead, this action updates the pull request description and action summary with
-the diff, providing a cleaner and more organized view of changes. Accepting the limit of 260kb description is a trade-off
+the diff, providing a cleaner and more organized view of changes. Accepting the 260KB description limit is a trade-off
 for a cleaner PR experience.
 
 ## Credits
