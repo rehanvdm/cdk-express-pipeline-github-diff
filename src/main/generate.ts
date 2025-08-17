@@ -9,7 +9,7 @@ import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import { getCacheKey } from './index.js';
 
 export async function generate() {
-  const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: true });
+  const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: false }) || 'cdk.out';
   const githubToken = core.getInput('github-token', { required: true });
   const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
   let gitHash: string;

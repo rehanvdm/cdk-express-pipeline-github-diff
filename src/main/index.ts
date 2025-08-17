@@ -4,7 +4,6 @@ import { generate } from './generate.js';
 import { print } from './print.js';
 
 export async function run(): Promise<void> {
-  process.env.FORCE_COLOR = '1';
   try {
     const isDebug = core.isDebug();
     if (isDebug) {
