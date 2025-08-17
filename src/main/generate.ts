@@ -146,11 +146,11 @@ async function outputSummary(githubToken: string, jobName: string, cdkSummaryDif
     const jobRunUrl =
       `${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/actions/runs/` +
       `${github.context.runId}/job/${jobId}`;
-    jobText = `, see [job log](${jobRunUrl})`;
+    jobText = ` , see [job log](${jobRunUrl})`;
   }
 
   const summary = `\`\`\`${cdkSummaryDiff}\`\`\`
   
-*Generated At: ${now} from commit: ${gitHash} ${jobText}*`;
+*Generated At: ${now} from commit: ${gitHash}${jobText}*`;
   await core.summary.addRaw(summary).write({ overwrite: true });
 }
