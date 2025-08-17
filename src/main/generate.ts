@@ -47,7 +47,7 @@ function printCdkIoToGitHub(msg: IoMessage<unknown>): void {
 async function diff(stackSelectors: string, cloudAssemblyDirectory: string) {
   let cdkSummaryDiff = '';
   const cdkToolkit = new Toolkit({
-    color: true,
+    color: false,
     ioHost: {
       notify: async function (msg) {
         printCdkIoToGitHub(msg);

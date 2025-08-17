@@ -10,7 +10,7 @@ import { updateGithubPrDescription } from '../utils/output.js';
 import { getCacheKey } from './index.js';
 
 export async function print() {
-  const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: true }) || 'cdk.out';
+  const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: false }) || 'cdk.out';
   const githubToken = core.getInput('github-token', { required: true });
   let owner: string;
   let repo: string;
