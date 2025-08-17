@@ -21,7 +21,6 @@ export async function generate() {
     return;
   }
   const jobName = core.getInput('job-name', { required: false }) || github.context.job;
-  core.info(`Using job name: ${jobName}`);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
   await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
   await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory);
@@ -128,7 +127,7 @@ async function getCurrentJobUrl(token: string, jobName: string) {
     repo: github.context.repo.repo,
     run_id: github.context.runId
   });
-
+  core.info(`Jobs: ${JSON.stringify(jobsResponse.data.jobs, null, 2)}`);
   const currentJob = jobsResponse.data.jobs.find((job) => job.name === jobName);
 
   if (!currentJob) {
