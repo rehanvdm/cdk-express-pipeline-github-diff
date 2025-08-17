@@ -1,7 +1,8 @@
 # CDK Express Pipeline GitHub Diff
 
-A GitHub Action that generates and displays AWS CDK Express Pipeline diffs directly in your pull request description,
-providing clear visibility into infrastructure changes grouped by waves, stages and stacks
+A GitHub Action that generates and displays [CDK Express Pipeline](https://github.com/rehanvdm/cdk-express-pipeline) 
+diffs directly in your pull request description,
+providing clear visibility into infrastructure changes grouped by waves, stages and stacks.
 
 ## Features
 
@@ -28,43 +29,32 @@ name: CDK Diff
 on:
   pull_request:
     branches: [main]
-
 jobs:
   cdk-diff:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-      contents: read
       id-token: write
     steps:
       - uses: actions/checkout@v4
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-
       - name: Install dependencies
         run: npm ci
-
-      - name: Build CDK
-        run: npm run build
-
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::123456789012:role/your-github-deploy-role
           aws-region: us-east-1
-
       - name: Synthesize CDK
         run: npm run cdk -- synth '**'
-
       - name: Generate CDK Diff
         uses: rehanvdm/cdk-express-pipeline-github-diff@v1
         with:
           mode: 'generate'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Update PR with Diff
         uses: rehanvdm/cdk-express-pipeline-github-diff@v1
         with:
@@ -81,13 +71,11 @@ name: CDK Diff Matrix
 on:
   pull_request:
     branches: [main]
-
 jobs:
   generate-diffs:
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
-      contents: read
       id-token: write
     strategy:
       matrix:
@@ -104,8 +92,6 @@ jobs:
           node-version: '20'
       - name: Install dependencies
         run: npm ci
-      - name: Build CDK
-        run: npm run build
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -120,10 +106,13 @@ jobs:
           stack-selectors: ${{ matrix.stack-group }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           job-name: ${{ matrix.job-name }}
-
+          
   print-diffs:
     needs: generate-diffs
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      id-token: write
     steps:
       - name: Update PR with Combined Diffs
         uses: rehanvdm/cdk-express-pipeline-github-diff@v1
@@ -147,27 +136,15 @@ jobs:
 ### PR Description output
 
 The action will append a formatted diff to the pull request description, it will never overwrite the existing
-description. Here’s an example of what it might look like:
+description. Here’s an example of what it looks like:
 
-```diff
-🌊 wave1
-  🏗 stage1
-    📦 StackA (stack-a-id)
-+       [+] AWS::S3::Bucket MyBucket MyBucket
-!       [~] AWS::Lambda::Function MyFunction MyFunction
-!         └─ [~] Runtime
-!             ├─ [-] "nodejs18.x"
-!             └─ [+] "nodejs20.x"
+![img.png](docs/imgs/pr_description.png)
 
-  🏗 wave1stage2
-    📦 StackB (stack-b-id)
--       [-] AWS::DynamoDB::Table OldTable OldTable
+### Action Summary output
 
-🌊 wave2
-  🏗 stage1
-    📦 StackC (stack-c-id)
-+       [+] AWS::SNS::Topic NotificationTopic NotificationTopic
-```
+The action will also update the action/job summary with the full CDK diff output without any changes:
+
+![img.png](docs/imgs/action_summary.png)
 
 ## How It Works
 
@@ -191,6 +168,23 @@ The `stack-selectors` input supports various patterns:
 
 See more details in the
 [CDK Express Pipeline documentation](https://rehanvdm.github.io/cdk-express-pipeline/guides/selective-deployment/)
+
+## FAQ
+
+### What happens if I have a big diff and it exceeds the GitHub comment size limit?
+The diff will be truncated, 260kb is a lot of space and most will not have this issue. However, if you do hit the
+limit, the action will still update the pull request description up to the limit and indicate it was truncated.
+The full diff will still be available in the action summary and you can always find it in the action logs.
+
+### Why not places the diff in a comment(s)?
+Placing comments creates a lot of noise and can clutter the pull request discussion, especially when doing many parallel
+diffs where each diff is a comment. Instead, this action updates the pull request description and action summary with
+the diff, providing a cleaner and more organized view of changes. Accepting the limit of 260kb description is a trade-off
+for a cleaner PR experience.
+
+## Credits
+
+This action is inspired by [cdk-diff-action](https://github.com/corymhall/cdk-diff-action)
 
 ## Contributing
 
