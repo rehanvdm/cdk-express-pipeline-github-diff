@@ -27,7 +27,8 @@ inputs:
     required: true
   job-name:
     description: |
-      The name of the job, to correctly link to the action logs when using a Matrix.
+      The name property of the job, to correctly link to the action/job logs when generating the summaries.
+      Optional for `mode: generate`
     required: false
 
 runs:

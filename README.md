@@ -126,13 +126,13 @@ jobs:
 
 ## Inputs
 
-| Input                      | Description                                                   | Required | Default             |
-| -------------------------- | ------------------------------------------------------------- | -------- | ------------------- |
-| `mode`                     | Action mode: `generate` to create diffs, `print` to update PR | ✅       | -                   |
-| `cloud-assembly-directory` | Directory containing the CDK Cloud Assembly                   | ❌       | `cdk.out`           |
-| `stack-selectors`          | Comma-separated stack selectors or patterns to diff           | ❌       | `**` (all stacks)   |
-| `github-token`             | GitHub token for API access and caching                       | ✅       | -                   |
-| `job-name`                 | Job name for matrix workflows (auto-detected if not provided) | ❌       | `${{ github.job }}` |
+| Input                      | Description                                                    | Required | Default           |
+| -------------------------- | -------------------------------------------------------------- | -------- | ----------------- |
+| `mode`                     | Action mode: `generate` to create diffs, `print` to update PR  | ✅       | -                 |
+| `cloud-assembly-directory` | Directory containing the CDK Cloud Assembly                    | ❌       | `cdk.out`         |
+| `stack-selectors`          | Comma-separated stack selectors or patterns to diff            | ❌       | `**` (all stacks) |
+| `github-token`             | GitHub token for API access and caching                        | ✅       | -                 |
+| `job-name`                 | Name of the job, used to link to action/job logs in summaries. | ❌       | -                 |
 
 ## Example Outputs
 

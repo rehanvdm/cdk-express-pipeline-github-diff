@@ -127,24 +127,30 @@ async function getCurrentJobUrl(token: string, jobName: string) {
     repo: github.context.repo.repo,
     run_id: github.context.runId
   });
-  core.info(`Jobs: ${JSON.stringify(jobsResponse.data.jobs, null, 2)}`);
-  const currentJob = jobsResponse.data.jobs.find((job) => job.name === jobName);
 
+  const currentJob = jobsResponse.data.jobs.find((job) => job.name === jobName);
   if (!currentJob) {
-    throw new Error(`Could not find job with name "${github.context.job}"`);
+    core.info(
+      `Job not found in the current workflow run, specify the 'job-name' input parameter to enhance the summary output`
+    );
   }
 
-  return currentJob.id;
+  return currentJob?.id;
 }
 
 async function outputSummary(githubToken: string, jobName: string, cdkSummaryDiff: string, gitHash: string) {
   const now = getNowFormated();
-  const jobId = await getCurrentJobUrl(githubToken, jobName);
-  const jobRunUrl =
-    `${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/actions/runs/` +
-    `${github.context.runId}/job/${jobId}`;
-  const summary = ` \`\`\`${cdkSummaryDiff}\`\`\`
+  let jobText = '';
+  if (jobName) {
+    const jobId = await getCurrentJobUrl(githubToken, jobName);
+    const jobRunUrl =
+      `${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/actions/runs/` +
+      `${github.context.runId}/job/${jobId}`;
+    jobText = `, see [job log](${jobRunUrl})`;
+  }
+
+  const summary = ` \`\`\`${cdkSummaryDiff}\`\`\`;
   
-*Generated At: ${now} from commit: ${gitHash} in [action run](${jobRunUrl})*`;
+*Generated At: ${now} from commit: ${gitHash} ${jobText}*`;
   await core.summary.addRaw(summary).write({ overwrite: true });
 }
