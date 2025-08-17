@@ -21,7 +21,7 @@ export async function generate() {
     return;
   }
   const jobName = core.getInput('job-name', { required: false }) || github.context.job;
-
+  core.info(`Using job name: ${jobName}`);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
   await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
   await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory);
