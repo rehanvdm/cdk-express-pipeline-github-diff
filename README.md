@@ -32,6 +32,10 @@ on:
 jobs:
   cdk-diff:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -81,6 +85,10 @@ on:
 jobs:
   generate-diffs:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+      id-token: write
     strategy:
       matrix:
         include:

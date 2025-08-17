@@ -103,9 +103,19 @@ function generateStackDiff(templateDiff: TemplateDiff): StackDiff {
 
     if (change.isUpdate) {
       stackDiff.summary.updates++;
-      const replacementIndicator = change.changeImpact === 'WILL_REPLACE' ? ' [💥 REPLACEMENT]' : '';
+
+      let indicator = '!';
+      let replacementIndicator = '';
+      if (change.changeImpact === 'WILL_REPLACE') {
+        indicator = '-';
+        replacementIndicator = ' (requires replacement)';
+      } else if (change.changeImpact === 'MAY_REPLACE') {
+        indicator = '-';
+        replacementIndicator = ' (may require replacement)';
+      }
+
       changes.push(
-        `!       [~] ${change.oldValue?.Type || change.newValue?.Type} ${logicalId} ${logicalId}${replacementIndicator}`
+        `${indicator}       [~] ${change.oldValue?.Type || change.newValue?.Type} ${logicalId} ${logicalId}${replacementIndicator}`
       );
 
       Object.entries(change.propertyUpdates).forEach(([propertyPath, propertyChange]) => {
@@ -116,7 +126,17 @@ function generateStackDiff(templateDiff: TemplateDiff): StackDiff {
           changes.push(`!         └─ [-] ${propertyPath}`);
           changes.push(`!             └─ [-] ${JSON.stringify(propertyChange.oldValue)}`);
         } else if (propertyChange.isUpdate) {
-          changes.push(`!         └─ [~] ${propertyPath}`);
+          let propertyIndicator = '!';
+          let propertyReplacementIndicator = '';
+          if (propertyChange.changeImpact === 'WILL_REPLACE') {
+            propertyIndicator = '-';
+            propertyReplacementIndicator = ' (requires replacement)';
+          } else if (propertyChange.changeImpact === 'MAY_REPLACE') {
+            propertyIndicator = '-';
+            propertyReplacementIndicator = ' (may require replacement)';
+          }
+
+          changes.push(`${propertyIndicator}         └─ [~] ${propertyPath}${propertyReplacementIndicator}`);
           changes.push(`!             ├─ [-] ${JSON.stringify(propertyChange.oldValue)}`);
           changes.push(`!             └─ [+] ${JSON.stringify(propertyChange.newValue)}`);
         }

@@ -45,8 +45,12 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
     new sns.Topic(stackA, 'TopicA', {
       displayName: 'Topic A'
     });
-    new sns.Topic(stackB, 'Topic`B`', {
+    new sns.Topic(stackB, 'TopicB', {
       displayName: 'Topic B'
+    });
+    new sns.Topic(stackB, 'TopicR', {
+      topicName: 'Topic R',
+      displayName: 'Topic R'
     });
   } else {
     new sns.Topic(stackA, 'TopicA', {
@@ -54,6 +58,10 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
     });
     new sns.Topic(stackC, 'TopicC', {
       displayName: 'Topic C'
+    });
+    new sns.Topic(stackB, 'TopicR', {
+      topicName: 'Topic R should not change',
+      displayName: 'Topic R can change'
     });
   }
 

@@ -11,7 +11,14 @@ exports[`diff.ts test complex diff markdown 1`] = `
 !             └─ [+] "Topic A Change"
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
--       [-] AWS::SNS::Topic TopicB2E0A749C TopicB2E0A749C
+-       [-] AWS::SNS::Topic TopicBB2A41848 TopicBB2A41848
+-       [~] AWS::SNS::Topic TopicRC70D74C1 TopicRC70D74C1 (requires replacement)
+!         └─ [~] DisplayName
+!             ├─ [-] "Topic R"
+!             └─ [+] "Topic R can change"
+-         └─ [~] TopicName (requires replacement)
+!             ├─ [-] "Topic R"
+!             └─ [+] "Topic R should not change"
 🌊 wave2
   🏗 stage1
     📦 StackC (wave2_stage1_stack-c)
