@@ -8,6 +8,8 @@ import { CloudAssembly } from 'aws-cdk-lib/cx-api';
 import { CdkExpressPipeline, CdkExpressPipelineAssembly, ExpressStack } from 'cdk-express-pipeline';
 import path from 'node:path';
 import * as fs from 'node:fs';
+//@ts-expect-error TS/JS import issue but works
+import { CDK_EXPRESS_PIPELINE_JSON_FILE } from '../src/utils/shared';
 
 type AssemblyDiff = {
   assembly: CloudAssembly;
@@ -134,7 +136,7 @@ describe('diff.ts', () => {
     // GH Action 2
     const allStackDiffs = getSavedDiffs(cdkOut);
     const shortHandOrder: CdkExpressPipelineAssembly = JSON.parse(
-      fs.readFileSync(path.join(cdkOut, 'cdk-express-pipeline.json'), 'utf-8')
+      fs.readFileSync(path.join(cdkOut, CDK_EXPRESS_PIPELINE_JSON_FILE), 'utf-8')
     );
     const markdown = generateMarkdown(shortHandOrder, allStackDiffs);
 

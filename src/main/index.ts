@@ -1,5 +1,4 @@
 import * as core from '@actions/core';
-import { createHash } from 'crypto';
 import { generate } from './generate.js';
 import { print } from './print.js';
 
@@ -23,12 +22,4 @@ export async function run(): Promise<void> {
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message);
   }
-}
-
-export function getCacheKey(stackSelector?: string): string {
-  let ret = `cdk-diff-pipeline-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}-`;
-  if (stackSelector) {
-    ret += createHash('md5').update(stackSelector).digest('hex');
-  }
-  return ret;
 }

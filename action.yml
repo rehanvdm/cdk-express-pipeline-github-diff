@@ -9,11 +9,34 @@ inputs:
         - `generate`: Generates, saves the diff of the CDK Express Pipeline to file and caches it.
         - `print`: Reads all the generated diffs from cache and updates the PR description with the diff.
     required: true
+  diff-name:
+    description: |
+      The name of the CDK Cloud Assembly. Used to differentiate between multiple assemblies when printing diffs. This 
+      is the h2 heading in the PR diff description.
+      Required for `mode: print`
+      Defaults to 'CDK Diff'
+    required: false
   cloud-assembly-directory:
     description: |
       The directory containing the CDK Cloud Assembly.
-      Required for `mode: generate`
-      Defaults to 'cdk.out'
+      Required for:
+       - `mode: generate`
+       - `mode: print` or alternatively use the `cloud-assembly-directories` property.
+      Defaults to 'cdk.out' if `cloud-assembly-directories` is not specified in `mode: print`.
+    required: false
+  cloud-assemblies:
+    description: |
+      An array of of objects indicating the CDK Cloud Assembly directories and the heading to use when printing them.
+      Can be specified instead of `cloud-assembly-directory` in mode `mode: print` when you want to diff multiple 
+      assemblies or change the default heading.
+      Format:
+      ```yaml
+      cloud-assemblies: |
+        - heading: CDK Diff Development
+          directory: cdk.out/dev
+        - heading: CDK Diff Production
+          directory: cdk.out/prod
+      ```
     required: false
   stack-selectors:
     description: |

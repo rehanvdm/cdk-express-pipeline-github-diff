@@ -6,7 +6,7 @@ import { getNowFormated } from '../utils/output.js';
 import { generateDiffs, getDiffsDir, saveDiffs } from '../utils/diff.js';
 import * as cache from '@actions/cache';
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
-import { getCacheKey } from './index.js';
+import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey } from '../utils/shared.js';
 
 export async function generate() {
   const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: false }) || 'cdk.out';
@@ -113,7 +113,7 @@ async function generateJsonDiffsAndCache(
   core.info('Successfully generated CDK Express Pipeline diffs');
 
   const savedDir = getDiffsDir(cloudAssemblyDirectory);
-  const pipelineOrderFile = `${cloudAssemblyDirectory}/cdk-express-pipeline.json`;
+  const pipelineOrderFile = `${cloudAssemblyDirectory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
   const cacheKey = getCacheKey(stackSelectors);
   const savedKey = await cache.saveCache([savedDir, pipelineOrderFile], cacheKey);
   core.info(`Successfully cached CDK Express Pipeline diffs with key: ${cacheKey} and id: ${savedKey}`);

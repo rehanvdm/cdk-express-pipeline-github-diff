@@ -2,21 +2,16 @@ import { ResourceDifference, type TemplateDiff } from '@aws-cdk/cloudformation-d
 import * as fs from 'node:fs';
 import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
 
-export type DiffOptions = {
-  /**
-   * The stack selectors to use for the diff operation.
-   */
-  stackSelectors: string[];
-};
 export type DiffResult = {
   stacks: Record<string, StackDiff>;
 };
+export type DiffSummary = {
+  additions: number;
+  removals: number;
+  updates: number;
+};
 export type StackDiff = {
-  summary: {
-    additions: number;
-    removals: number;
-    updates: number;
-  };
+  summary: DiffSummary;
   markdown: string;
 };
 
@@ -109,9 +104,11 @@ function generateStackDiff(templateDiff: TemplateDiff): StackDiff {
       if (change.changeImpact === 'WILL_REPLACE') {
         indicator = '-';
         replacementIndicator = ' (requires replacement)';
+        stackDiff.summary.removals++;
       } else if (change.changeImpact === 'MAY_REPLACE') {
         indicator = '-';
         replacementIndicator = ' (may require replacement)';
+        stackDiff.summary.removals++;
       }
 
       changes.push(

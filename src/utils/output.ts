@@ -1,5 +1,6 @@
 import { Octokit } from '@octokit/core';
 import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods';
+import { DiffSummary } from './diff.js';
 
 const MAX_DESCRIPTION_LENGTH = 262145;
 
@@ -13,12 +14,17 @@ export function getNowFormated() {
   );
 }
 
+export type AssemblyDiff = {
+  header: string;
+  markdown: string;
+  summary: DiffSummary;
+};
 export async function updateGithubPrDescription(
   owner: string,
   repo: string,
   pullNumber: number,
   ghToken: string,
-  markdown: string,
+  diffs: AssemblyDiff[],
   gitHash: string
 ) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
@@ -26,14 +32,20 @@ export async function updateGithubPrDescription(
 
   const now = getNowFormated();
   const marker = '<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->';
-  const newContent = `${marker}
+  let newContent = `${marker}
 <!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
----
-## CDK Diff
+---`;
 
-${markdown}
+  for (const diff of diffs) {
+    newContent += `## ${diff.header}
+
+<details>
+<summary> Additions: ${diff.summary.additions}, Updates: ${diff.summary.updates}, Removals: ${diff.summary.removals} </summary>
+${diff.markdown}
+</details>
 
 *Generated At: ${now} from commit: ${gitHash}*`;
+  }
 
   const response = await octokit.rest.pulls.get({
     owner,
