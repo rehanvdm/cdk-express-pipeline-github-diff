@@ -37,10 +37,24 @@ export async function updateGithubPrDescription(
 ---`;
 
   for (const diff of diffs) {
-    newContent += `## ${diff.header}
+    const summaryMarkers = [];
+    if (diff.summary.additions) {
+      summaryMarkers.push(`🟢${diff.summary.additions}`);
+    }
+    if (diff.summary.updates) {
+      summaryMarkers.push(`🟠${diff.summary.updates}`);
+    }
+    if (diff.summary.removals) {
+      summaryMarkers.push(`🔴${diff.summary.removals}`);
+    }
+    const summaryText = summaryMarkers.length ? `${summaryMarkers.join(' ')}` : '';
 
-<details>
-<summary> Additions: ${diff.summary.additions}, Updates: ${diff.summary.updates}, Removals: ${diff.summary.removals} </summary>
+    newContent += `
+## ${diff.header}
+
+<details open>
+<summary> Details ${summaryText} </summary>
+
 ${diff.markdown}
 </details>
 
