@@ -61,7 +61,13 @@ describe('updateGithubPrDescription', () => {
     const repo = 'test-repo';
     const pullNumber = 123;
     const ghToken = 'test-token';
-    const markdown = '## Test Diff\n- Added resource A\n- Modified resource B';
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: '...',
+        summary: { additions: 1, updates: 1, removals: 0 }
+      }
+    ];
     const gitHash = 'abc123def456';
 
     const existingDescription = 'This is an existing PR description';
@@ -72,7 +78,7 @@ describe('updateGithubPrDescription', () => {
 
     mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
 
-    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, markdown, gitHash);
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash);
 
     expect(mockOctokitInstance.rest.pulls.get).toHaveBeenCalledWith({
       owner,
@@ -95,7 +101,13 @@ describe('updateGithubPrDescription', () => {
     const repo = 'test-repo';
     const pullNumber = 123;
     const ghToken = 'test-token';
-    const markdown = '## New Diff\n- Updated resource C';
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: '...',
+        summary: { additions: 0, updates: 1, removals: 0 }
+      }
+    ];
     const gitHash = 'abc123def456';
 
     const existingDescription = `This is an existing PR description
@@ -113,7 +125,7 @@ describe('updateGithubPrDescription', () => {
 
     mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
 
-    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, markdown, gitHash);
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash);
 
     expect(mockOctokitInstance.rest.pulls.update).toHaveBeenCalledWith({
       owner,
@@ -130,7 +142,13 @@ describe('updateGithubPrDescription', () => {
     const repo = 'test-repo';
     const pullNumber = 123;
     const ghToken = 'test-token';
-    const markdown = '## Test Diff\n- Added resource A';
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: '...',
+        summary: { additions: 1, updates: 0, removals: 0 }
+      }
+    ];
     const gitHash = 'abc123def456';
 
     mockOctokitInstance.rest.pulls.get.mockResolvedValue({
@@ -139,7 +157,7 @@ describe('updateGithubPrDescription', () => {
 
     mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
 
-    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, markdown, gitHash);
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash);
 
     expect(mockOctokitInstance.rest.pulls.update).toHaveBeenCalledWith({
       owner,
@@ -159,7 +177,14 @@ describe('updateGithubPrDescription', () => {
     const gitHash = 'abc123def456';
 
     // Create a markdown that would exceed the limit
-    const longMarkdown = '# Very Long Diff\n' + 'A'.repeat(300000);
+    const longMarkdown = 'Very Long Diff\n' + 'A'.repeat(300000);
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: longMarkdown,
+        summary: { additions: 1, updates: 0, removals: 0 }
+      }
+    ];
     const existingDescription = 'B'.repeat(100000);
 
     mockOctokitInstance.rest.pulls.get.mockResolvedValue({
@@ -168,7 +193,7 @@ describe('updateGithubPrDescription', () => {
 
     mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
 
-    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, longMarkdown, gitHash);
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash);
 
     expect(result).toContain('... TRUNCATED Look at GitHub Actions logs for full diff');
     expect(result.length).toBeLessThanOrEqual(262145);
@@ -180,7 +205,13 @@ describe('updateGithubPrDescription', () => {
     const repo = 'test-repo';
     const pullNumber = 123;
     const ghToken = 'test-token';
-    const markdown = '## New Diff\n- Updated resource';
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: '...',
+        summary: { additions: 0, updates: 1, removals: 0 }
+      }
+    ];
     const gitHash = 'abc123def456';
 
     const existingDescription = `Original description
@@ -205,7 +236,7 @@ Some text in between
 
     mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
 
-    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, markdown, gitHash);
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash);
 
     expect(mockOctokitInstance.rest.pulls.update).toHaveBeenCalledWith({
       owner,
@@ -222,7 +253,13 @@ Some text in between
     const repo = 'test-repo';
     const pullNumber = 123;
     const ghToken = 'test-token';
-    const markdown = '## Test Diff\n- Added resource A';
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: '...',
+        summary: { additions: 1, updates: 0, removals: 0 }
+      }
+    ];
     const gitHash = 'abc123def456';
 
     mockOctokitInstance.rest.pulls.get.mockResolvedValue({
@@ -231,7 +268,7 @@ Some text in between
 
     mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
 
-    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, markdown, gitHash);
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash);
 
     expect(mockOctokitInstance.rest.pulls.update).toHaveBeenCalledWith({
       owner,
@@ -248,13 +285,60 @@ Some text in between
     const repo = 'test-repo';
     const pullNumber = 123;
     const ghToken = 'test-token';
-    const markdown = '## Test Diff';
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: '...',
+        summary: { additions: 0, updates: 0, removals: 0 }
+      }
+    ];
     const gitHash = 'abc123def456';
 
     mockOctokitInstance.rest.pulls.get.mockRejectedValue(new Error('API Error'));
 
-    await expect(updateGithubPrDescription(owner, repo, pullNumber, ghToken, markdown, gitHash)).rejects.toThrow(
+    await expect(updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash)).rejects.toThrow(
       'API Error'
     );
+  });
+
+  it('should handle multiple diffs', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const diffs = [
+      {
+        header: 'CDK Diff Dev',
+        markdown: '...',
+        summary: { additions: 1, updates: 1, removals: 0 }
+      },
+      {
+        header: 'CDK Diff Prod',
+        markdown: '...',
+        summary: { additions: 0, updates: 1, removals: 1 }
+      }
+    ];
+    const gitHash = 'abc123def456';
+
+    const existingDescription = 'Original description';
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: existingDescription }
+    });
+
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash);
+
+    expect(mockOctokitInstance.rest.pulls.update).toHaveBeenCalledWith({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      body: result
+    });
+
+    expect(result).toContain('CDK Diff Dev');
+    expect(result).toContain('CDK Diff Prod');
+    expect(result).toMatchSnapshot();
   });
 });
