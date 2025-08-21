@@ -12,7 +12,7 @@ inputs:
   diff-name:
     description: |
       The name of the CDK Cloud Assembly. Used to differentiate between multiple assemblies when printing diffs. This 
-      is the h2 heading in the PR diff description.
+      is the h2 header in the PR diff description.
       Required for `mode: print`
       Defaults to 'CDK Diff'
     required: false
@@ -26,15 +26,15 @@ inputs:
     required: false
   cloud-assemblies:
     description: |
-      An array of of objects indicating the CDK Cloud Assembly directories and the heading to use when printing them.
+      An array of of objects indicating the CDK Cloud Assembly directories and the header to use when printing them.
       Can be specified instead of `cloud-assembly-directory` in mode `mode: print` when you want to diff multiple 
-      assemblies or change the default heading.
+      assemblies or change the default header.
       Format:
       ```yaml
       cloud-assemblies: |
-        - heading: CDK Diff Development
+        - header: CDK Diff Development
           directory: cdk.out/dev
-        - heading: CDK Diff Production
+        - header: CDK Diff Production
           directory: cdk.out/prod
       ```
     required: false
