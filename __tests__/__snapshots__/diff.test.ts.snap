@@ -1,0 +1,28 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`diff.ts test complex diff markdown 1`] = `
+"\`\`\`diff
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!       [~] AWS::SNS::Topic TopicA1C813746 TopicA1C813746
+!         └─ [~] DisplayName
+!             ├─ [-] "Topic A"
+!             └─ [+] "Topic A Change"
+  🏗 wave1stage2
+    📦 StackB (wave1_wave1stage2_stack-b)
+-       [-] AWS::SNS::Topic TopicBB2A41848 TopicBB2A41848
+-       [~] AWS::SNS::Topic TopicRC70D74C1 TopicRC70D74C1 (requires replacement)
+!         └─ [~] DisplayName
+!             ├─ [-] "Topic R"
+!             └─ [+] "Topic R can change"
+-         └─ [~] TopicName (requires replacement)
+!             ├─ [-] "Topic R"
+!             └─ [+] "Topic R should not change"
+🌊 wave2
+  🏗 stage1
+    📦 StackC (wave2_stage1_stack-c)
++       [+] AWS::SNS::Topic TopicCB48CAADF TopicCB48CAADF
+\`\`\`
+"
+`;

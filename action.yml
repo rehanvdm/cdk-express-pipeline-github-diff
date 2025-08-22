@@ -1,24 +1,59 @@
-name: The name of your action here
-description: Provide a description here
-author: Your name or organization here
+name: cdk-express-pipeline-github-diff
+description: Outputs the CDK Express Pipeline diff on a GitHub PR
+author: rehanvdm
 
-# Add your action's branding here. This will appear on the GitHub Marketplace.
-branding:
-  icon: heart
-  color: red
-
-# Define your inputs here.
 inputs:
-  milliseconds:
-    description: Your input description here
+  mode:
+    description: |
+      The mode to run the action in. Options are:
+        - `generate`: Generates, saves the diff of the CDK Express Pipeline to file and caches it.
+        - `print`: Reads all the generated diffs from cache and updates the PR description with the diff.
     required: true
-    default: '1000'
-
-# Define your outputs here.
-outputs:
-  time:
-    description: Your output description here
+  diff-name:
+    description: |
+      The name of the CDK Cloud Assembly. Used to differentiate between multiple assemblies when printing diffs. This 
+      is the h2 header in the PR diff description.
+      Required for `mode: print`
+      Defaults to 'CDK Diff'
+    required: false
+  cloud-assembly-directory:
+    description: |
+      The directory containing the CDK Cloud Assembly.
+      Required for:
+       - `mode: generate`
+       - `mode: print` or alternatively use the `cloud-assembly-directories` property.
+      Defaults to 'cdk.out' if `cloud-assembly-directories` is not specified in `mode: print`.
+    required: false
+  cloud-assemblies:
+    description: |
+      An array of of objects indicating the CDK Cloud Assembly directories and the header to use when printing them.
+      Can be specified instead of `cloud-assembly-directory` in mode `mode: print` when you want to diff multiple 
+      assemblies or change the default header.
+      Format:
+      ```yaml
+      cloud-assemblies: |
+        - header: CDK Diff Development
+          directory: cdk.out/dev
+        - header: CDK Diff Production
+          directory: cdk.out/prod
+      ```
+    required: false
+  stack-selectors:
+    description: |
+      The stack selectors to use for the CDK diff. Multiple selectors can be provided as a comma-separated list.
+      Required for `mode: generate`
+      Defaults to '**' (all stacks).
+    required: false
+  github-token:
+    description: |
+      GitHub token for API access to read PR action/job info, update the PR description and read & write to the cache
+    required: true
+  job-name:
+    description: |
+      The name property of the job, to correctly link to the action/job logs when generating the summaries.
+      Optional for `mode: generate`
+    required: false
 
 runs:
   using: node20
-  main: dist/index.js
+  main: dist/index.cjs
