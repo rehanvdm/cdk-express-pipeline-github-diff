@@ -16,13 +16,20 @@ waves, stages and stacks.
 
 ## Usage
 
-There are multiple ways to use this action depending on your workflow needs. Below shows a basic example where a single
-job generates and displays diffs. Then a more complex example that uses matrix jobs to generate diffs in parallel and
-then combines the output.
+There are multiple ways to use this action depending on your workflow needs. 
 
-### Basic Usage
+| Input                      | Description                                                    | Required | Default           |
+| -------------------------- | -------------------------------------------------------------- | -------- | ----------------- |
+| `mode`                     | Action mode: `generate` to create diffs, `print` to update PR  | ✅       | -                 |
+| `cloud-assembly-directory` | Directory containing the CDK Cloud Assembly                    | ❌       | `cdk.out`         |
+| `stack-selectors`          | Comma-separated stack selectors or patterns to diff            | ❌       | `**` (all stacks) |
+| `github-token`             | GitHub token for API access and caching                        | ✅       | -                 |
+| `job-name`                 | Name of the job, used to link to action/job logs in summaries. | ❌       | -                 |
 
-For simple workflows where you generate and display diffs in a single job:
+
+### Basic - Single Job Diff
+
+For simple workflows where you generate and display diffs in a single job.
 
 ```yaml
 name: CDK Diff
@@ -48,13 +55,16 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::123456789012:role/your-github-deploy-role
           aws-region: us-east-1
+          
       - name: Synthesize CDK
         run: npm run cdk -- synth '**'
+        
       - name: Generate CDK Diff
         uses: rehanvdm/cdk-express-pipeline-github-diff@v1
         with:
           mode: 'generate'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          
       - name: Update PR with Diff
         uses: rehanvdm/cdk-express-pipeline-github-diff@v1
         with:
@@ -62,12 +72,16 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-### Complex example with Parallel Diffs using Matrix
+### Complex - Parallel Diffs using Matrix
 
-For matrix workflows where you generate diffs across multiple jobs and combine the output:
+Doing diffs in parallel can significantly speed up the process, especially for large CDK applications with many stacks.
+This example shows how you can you generate diffs across multiple jobs in parallel and combine the output.
+
+<details>
+<summary> Click for Workflow YAML </summary>
 
 ```yaml
-name: CDK Diff Matrix
+name: CDK Diff Parallel
 on:
   pull_request:
     branches: [main]
@@ -97,6 +111,7 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::123456789012:role/your-github-deploy-role
           aws-region: us-east-1
+          
       - name: Synthesize CDK
         run: npm run cdk -- synth '**'
       - name: Generate CDK Diff
@@ -121,15 +136,91 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-## Inputs
+</details>
 
-| Input                      | Description                                                    | Required | Default           |
-| -------------------------- | -------------------------------------------------------------- | -------- | ----------------- |
-| `mode`                     | Action mode: `generate` to create diffs, `print` to update PR  | ✅       | -                 |
-| `cloud-assembly-directory` | Directory containing the CDK Cloud Assembly                    | ❌       | `cdk.out`         |
-| `stack-selectors`          | Comma-separated stack selectors or patterns to diff            | ❌       | `**` (all stacks) |
-| `github-token`             | GitHub token for API access and caching                        | ✅       | -                 |
-| `job-name`                 | Name of the job, used to link to action/job logs in summaries. | ❌       | -                 |
+### Advance - Multiple Cloud Assemblies
+
+You might want to do multiple diffs per environment on a single PR. For example, doing both `dev` and `prod` diffs on 
+the PR to `main` enables catching issues on `prod` early, before the code is merged to `main`. This can be done by 
+generating Cloud Assemblies with `cdk synth --output ASSEMBLY_DIR` for each environment and then using their output
+directories in the action. 
+
+This example does a `**` diff to keep it brief, but you can also do the diffs in parallel using the matrix strategy
+as shown above.
+
+<details>
+<summary> Click for Workflow YAML </summary>
+
+```yaml
+name: Diff Multiple Assemblies
+on:
+  pull_request:
+    branches: [main]
+jobs:
+  diff-envs:
+    name: CDK Diff Environments
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      id-token: write
+    strategy:
+      matrix:
+        include:
+          - cloud-assembly-directory: cdk.out/dev
+          - cloud-assembly-directory: cdk.out/prod
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: Set up node
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm install ci
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/your-github-deploy-role
+          aws-region: us-east-1
+
+      - name: CDK Synth
+        run: npm run cdk -- synth '**' --output ${{ matrix.cloud-assembly-directory }}
+      - name: CDK Diff Generate
+        uses: rehanvdm/cdk-express-pipeline-github-diff@feature/init
+        with:
+          mode: generate
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cloud-assembly-directory: ${{ matrix.cloud-assembly-directory }}
+
+  print-diffs:
+    name: CDK Diff and Deploy
+    runs-on: ubuntu-latest
+    needs:
+      - diff-envs
+    permissions:
+      pull-requests: write
+      id-token: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      - name: CDK Diff Output
+        uses: rehanvdm/cdk-express-pipeline-github-diff@feature/init
+        with:
+          mode: print
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cloud-assemblies: |
+            - header: CDK Diff Development
+              directory: cdk.out/dev
+            - header: CDK Diff Production
+              directory: cdk.out/prod
+```
+
+Will produce the following: 
+
+![advance_pr_description.png](docs/imgs/advance_pr_description.png)
+
+</details>
 
 ## Example Outputs
 
