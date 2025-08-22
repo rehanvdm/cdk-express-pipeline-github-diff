@@ -16,11 +16,13 @@ waves, stages and stacks.
 
 ## Usage
 
-This action operates in two distinct modes: `generate` and `print`. Understanding these modes is essential for 
-setting up your workflow correctly.
+This action operates in two distinct modes: `generate` and `print`. Understanding these modes is essential for setting
+up your workflow correctly.
 
 ### Generate Mode (`mode: 'generate'`)
+
 The generate mode analyzes your CDK Express Pipeline assembly and creates detailed diffs for each stack. This mode:
+
 - Must be run after `cdk synth` to generate the cloud assembly
 - Analyzes your CDK Express Pipeline assembly structure
 - Creates detailed diffs showing resource changes (additions, updates, deletions) for each stack
@@ -28,28 +30,31 @@ The generate mode analyzes your CDK Express Pipeline assembly and creates detail
 - Updates action/job summaries with the full diff output
 
 **Parameters for Generate Mode:**
+
 - `mode`: Set to `'generate'` (required)
-- `github-token`: GitHub token for API access and caching (required)
+- `github-token`: GitHub token for API access and caching that needs `pull-requests: write` permission (required)
 - `cloud-assembly-directory`: Directory containing the CDK Cloud Assembly (optional, default: `cdk.out`)
 - `stack-selectors`: Comma-separated stack selectors or patterns to diff (optional, default: `**` for all stacks)
 - `job-name`: Name of the job, used to link to action/job logs in summaries (optional)
 
 ### Print Mode (`mode: 'print'`)
+
 The print mode retrieves cached diff data and updates the pull request description. This mode:
+
 - Retrieves all cached diff data from previous `generate` jobs
 - Combines diffs according to the pipeline wave/stage structure
 - Updates the pull request description with formatted diff output
 - Can combine results from multiple cloud assemblies
 
 **Parameters for Print Mode:**
+
 - `mode`: Set to `'print'` (required)
-- `github-token`: GitHub token for API access and caching (required)
+- `github-token`: GitHub token for API access and caching that needs `pull-requests: write` permission (required)
 - `cloud-assembly-directory`: Directory containing the CDK Cloud Assembly (optional, default: `cdk.out`)
 - `job-name`: Name of the job, used to link to action/job logs in summaries (optional)
-- `cloud-assemblies`: List of cloud assemblies to print diffs from(optional). Do not specify `cloud-assembly-directory`
-   this property is the "array" version of `cloud-assembly-directory` and allows you to specify multiple assemblies 
-   and custom headers.
-
+- `cloud-assemblies`: List of cloud assemblies to print diffs from (optional). Do not specify `cloud-assembly-directory`
+  when using this property as it is the "array" version of `cloud-assembly-directory` and allows you to specify multiple
+  assemblies and custom headers.
 
 ### Basic - Single Job Diff
 
@@ -79,16 +84,16 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::123456789012:role/your-github-deploy-role
           aws-region: us-east-1
-          
+
       - name: Synthesize CDK
         run: npm run cdk -- synth '**'
-        
+
       - name: Generate CDK Diff
         uses: rehanvdm/cdk-express-pipeline-github-diff@v1
         with:
           mode: 'generate'
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Update PR with Diff
         uses: rehanvdm/cdk-express-pipeline-github-diff@v1
         with:
@@ -99,7 +104,7 @@ jobs:
 ### Complex - Parallel Diffs using Matrix
 
 Doing diffs in parallel can significantly speed up the process, especially for large CDK applications with many stacks.
-This example shows how you can you generate diffs across multiple jobs in parallel and combine the output.
+This example shows how you can generate diffs across multiple jobs in parallel and combine the output.
 
 <details>
 <summary> Click for Workflow YAML </summary>
@@ -135,14 +140,14 @@ jobs:
         with:
           role-to-assume: arn:aws:iam::123456789012:role/your-github-deploy-role
           aws-region: us-east-1
-          
+
       - name: Synthesize CDK
         run: npm run cdk -- synth '**'
       - name: Generate CDK Diff
         uses: rehanvdm/cdk-express-pipeline-github-diff@v1
         with:
           mode: 'generate'
-          stack-selectors: ${{ matrix.stack-group }}
+          stack-selectors: ${{ matrix.selectors }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           job-name: ${{ matrix.job-name }}
 
@@ -162,15 +167,15 @@ jobs:
 
 </details>
 
-### Advance - Multiple Cloud Assemblies
+### Advanced - Multiple Cloud Assemblies
 
-You might want to do multiple diffs per environment on a single PR. For example, doing both `dev` and `prod` diffs on 
-the PR to `main` enables catching issues on `prod` early, before the code is merged to `main`. This can be done by 
+You might want to do multiple diffs per environment on a single PR. For example, doing both `dev` and `prod` diffs on
+the PR to `main` enables catching issues on `prod` early, before the code is merged to `main`. This can be done by
 generating Cloud Assemblies with `cdk synth --output ASSEMBLY_DIR` for each environment and then using their output
-directories in the action. 
+directories in the action.
 
-This example does a `**` diff to keep it brief, but you can also do the diffs in parallel using the matrix strategy
-as shown above.
+This example does a `**` diff to keep it brief, but you can also do the diffs in parallel using the matrix strategy as
+shown above.
 
 <details>
 <summary> Click for Workflow YAML </summary>
@@ -201,7 +206,7 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install dependencies
-        run: npm install ci
+        run: npm ci
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -210,7 +215,7 @@ jobs:
 
       - name: CDK Synth
         run: npm run cdk -- synth '**' --output ${{ matrix.cloud-assembly-directory }}
-      - name: CDK Diff Generate
+      - name: Generate CDK Diff
         uses: rehanvdm/cdk-express-pipeline-github-diff@feature/init
         with:
           mode: generate
@@ -228,7 +233,7 @@ jobs:
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
-      - name: CDK Diff Output
+      - name: Update PR with Diff
         uses: rehanvdm/cdk-express-pipeline-github-diff@feature/init
         with:
           mode: print
@@ -240,7 +245,7 @@ jobs:
               directory: cdk.out/prod
 ```
 
-Will produce the following: 
+Will produce the following:
 
 ![advance_pr_description.png](docs/imgs/advance_pr_description.png)
 
@@ -251,7 +256,7 @@ Will produce the following:
 ### PR Description output
 
 The action will append a formatted diff to the pull request description, it will never overwrite the existing
-description. Here’s an example of what it looks like:
+description. Here's an example of what it looks like:
 
 ![img.png](docs/imgs/pr_description.png)
 
@@ -292,12 +297,22 @@ The diff will be truncated, 260kb is a lot of space and most will not have this 
 the action will still update the pull request description up to the limit and indicate it was truncated. The full diff
 will still be available in the action summary and you can always find it in the action logs.
 
-### Why not places the diff in a comment(s)?
+### Why not place the diff in a comment(s)?
 
 Placing comments creates a lot of noise and can clutter the pull request discussion, especially when doing many parallel
 diffs where each diff is a comment. Instead, this action updates the pull request description and action summary with
 the diff, providing a cleaner and more organized view of changes. Accepting the 260KB description limit is a trade-off
 for a cleaner PR experience.
+
+### Can I use this action with non-Express Pipeline CDK applications?
+
+This action is specifically designed for CDK Express Pipeline applications. It relies on the wave/stage/stack structure
+that Express Pipeline provides. For regular CDK applications, you may want to use alternative diff actions.
+
+### How do I handle authentication for the action?
+
+The action requires a GitHub token with `pull-requests: write` permission to update PR descriptions and action
+summaries.
 
 ## Credits
 
