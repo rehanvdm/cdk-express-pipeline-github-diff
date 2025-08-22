@@ -16,15 +16,39 @@ waves, stages and stacks.
 
 ## Usage
 
-There are multiple ways to use this action depending on your workflow needs. 
+This action operates in two distinct modes: `generate` and `print`. Understanding these modes is essential for 
+setting up your workflow correctly.
 
-| Input                      | Description                                                    | Required | Default           |
-| -------------------------- | -------------------------------------------------------------- | -------- | ----------------- |
-| `mode`                     | Action mode: `generate` to create diffs, `print` to update PR  | ✅       | -                 |
-| `cloud-assembly-directory` | Directory containing the CDK Cloud Assembly                    | ❌       | `cdk.out`         |
-| `stack-selectors`          | Comma-separated stack selectors or patterns to diff            | ❌       | `**` (all stacks) |
-| `github-token`             | GitHub token for API access and caching                        | ✅       | -                 |
-| `job-name`                 | Name of the job, used to link to action/job logs in summaries. | ❌       | -                 |
+### Generate Mode (`mode: 'generate'`)
+The generate mode analyzes your CDK Express Pipeline assembly and creates detailed diffs for each stack. This mode:
+- Must be run after `cdk synth` to generate the cloud assembly
+- Analyzes your CDK Express Pipeline assembly structure
+- Creates detailed diffs showing resource changes (additions, updates, deletions) for each stack
+- Caches the diff data for retrieval by the print mode
+- Updates action/job summaries with the full diff output
+
+**Parameters for Generate Mode:**
+- `mode`: Set to `'generate'` (required)
+- `github-token`: GitHub token for API access and caching (required)
+- `cloud-assembly-directory`: Directory containing the CDK Cloud Assembly (optional, default: `cdk.out`)
+- `stack-selectors`: Comma-separated stack selectors or patterns to diff (optional, default: `**` for all stacks)
+- `job-name`: Name of the job, used to link to action/job logs in summaries (optional)
+
+### Print Mode (`mode: 'print'`)
+The print mode retrieves cached diff data and updates the pull request description. This mode:
+- Retrieves all cached diff data from previous `generate` jobs
+- Combines diffs according to the pipeline wave/stage structure
+- Updates the pull request description with formatted diff output
+- Can combine results from multiple cloud assemblies
+
+**Parameters for Print Mode:**
+- `mode`: Set to `'print'` (required)
+- `github-token`: GitHub token for API access and caching (required)
+- `cloud-assembly-directory`: Directory containing the CDK Cloud Assembly (optional, default: `cdk.out`)
+- `job-name`: Name of the job, used to link to action/job logs in summaries (optional)
+- `cloud-assemblies`: List of cloud assemblies to print diffs from(optional). Do not specify `cloud-assembly-directory`
+   this property is the "array" version of `cloud-assembly-directory` and allows you to specify multiple assemblies 
+   and custom headers.
 
 
 ### Basic - Single Job Diff
