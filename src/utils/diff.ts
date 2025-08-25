@@ -89,222 +89,97 @@ function generateStackDiff(stackIdName: string, templateDiff: TemplateDiff, cdkD
     },
     markdown: ''
   };
-  const changes: string[] = [];
 
-  templateDiff.resources.forEachDifference((logicalId: string, change: ResourceDifference) => {
-    if (ignoreResource(change)) {
-      return;
-    }
+  // Extract the diff output for this specific stack from cdkDiffOutput
+  const stackDiffOutput = extractStackDiffOutput(stackIdName, cdkDiffOutput);
 
-    if (change.isUpdate) {
-      stackDiff.summary.updates++;
+  if (stackDiffOutput) {
+    stackDiff.markdown = stackDiffOutput;
 
-      let indicator = '!';
-      let replacementIndicator = '';
-      if (change.changeImpact === 'WILL_REPLACE') {
-        indicator = '-';
-        replacementIndicator = ' (requires replacement)';
-        stackDiff.summary.removals++;
-      } else if (change.changeImpact === 'MAY_REPLACE') {
-        indicator = '-';
-        replacementIndicator = ' (may require replacement)';
-        stackDiff.summary.removals++;
+    // Calculate summary from the template diff
+    templateDiff.resources.forEachDifference((logicalId: string, change: ResourceDifference) => {
+      if (ignoreResource(change)) {
+        return;
       }
 
-      changes.push(
-        `${indicator}       [~] ${change.oldValue?.Type || change.newValue?.Type} ${logicalId} ${logicalId}${replacementIndicator}`
-      );
-
-      const propertyEntries = Object.entries(change.propertyUpdates);
-      propertyEntries.forEach(([propertyPath, propertyChange], index) => {
-        const isLastProperty = index === propertyEntries.length - 1;
-
-        if (propertyChange.isAddition) {
-          changes.push(`!         ${isLastProperty ? '└' : '├'}─ [+] ${propertyPath}`);
-          changes.push(`!         ${isLastProperty ? ' ' : '│'}   └─ [+] ${JSON.stringify(propertyChange.newValue)}`);
-        } else if (propertyChange.isRemoval) {
-          changes.push(`!         ${isLastProperty ? '└' : '├'}─ [-] ${propertyPath}`);
-          changes.push(`!         ${isLastProperty ? ' ' : '│'}   └─ [-] ${JSON.stringify(propertyChange.oldValue)}`);
-        } else if (propertyChange.isUpdate) {
-          let propertyIndicator = '!';
-          let propertyReplacementIndicator = '';
-          if (propertyChange.changeImpact === 'WILL_REPLACE') {
-            propertyIndicator = '-';
-            propertyReplacementIndicator = ' (requires replacement)';
-          } else if (propertyChange.changeImpact === 'MAY_REPLACE') {
-            propertyIndicator = '-';
-            propertyReplacementIndicator = ' (may require replacement)';
-          }
-
-          changes.push(
-            `${propertyIndicator}         ${isLastProperty ? '└' : '├'}─ [~] ${propertyPath}${propertyReplacementIndicator}`
-          );
-
-          // Check if both values are objects for deep diff
-          if (
-            propertyChange.oldValue &&
-            propertyChange.newValue &&
-            typeof propertyChange.oldValue === 'object' &&
-            typeof propertyChange.newValue === 'object'
-          ) {
-            // Do deep diff
-            const deepChanges = deepDiff(
-              propertyChange.oldValue,
-              propertyChange.newValue,
-              propertyPath,
-              `!         ${isLastProperty ? ' ' : '│'}   `,
-              isLastProperty
-            );
-            if (deepChanges.length > 0) {
-              changes.push(...deepChanges);
-            } else {
-              // Fallback to simple diff if no deep changes found
-              changes.push(
-                `!         ${isLastProperty ? ' ' : '│'}   ├─ [-] ${JSON.stringify(propertyChange.oldValue)}`
-              );
-              changes.push(
-                `!         ${isLastProperty ? ' ' : '│'}   └─ [+] ${JSON.stringify(propertyChange.newValue)}`
-              );
-            }
-          } else {
-            // Simple diff for non-objects
-            changes.push(`!         ${isLastProperty ? ' ' : '│'}   ├─ [-] ${JSON.stringify(propertyChange.oldValue)}`);
-            changes.push(`!         ${isLastProperty ? ' ' : '│'}   └─ [+] ${JSON.stringify(propertyChange.newValue)}`);
-          }
+      if (change.isUpdate) {
+        stackDiff.summary.updates++;
+        if (change.changeImpact === 'WILL_REPLACE' || change.changeImpact === 'MAY_REPLACE') {
+          stackDiff.summary.removals++;
         }
-      });
-    } else if (change.isAddition) {
-      stackDiff.summary.additions++;
-      changes.push(`+       [+] ${change.newValue?.Type} ${logicalId} ${logicalId}`);
-    } else if (change.isRemoval) {
-      stackDiff.summary.removals++;
-      changes.push(`-       [-] ${change.oldValue?.Type} ${logicalId} ${logicalId}`);
-    }
-  });
-
-  if (changes.length > 0) {
-    stackDiff.markdown = changes.join('\n');
+      } else if (change.isAddition) {
+        stackDiff.summary.additions++;
+      } else if (change.isRemoval) {
+        stackDiff.summary.removals++;
+      }
+    });
   }
+
   return stackDiff;
 }
 
-function deepDiff(
-  oldValue: any,
-  newValue: any,
-  path: string = '',
-  baseIndent: string = '',
-  isLast: boolean = true
-): string[] {
-  const changes: string[] = [];
+function extractStackDiffOutput(stackIdName: string, cdkDiffOutput: string): string {
+  const lines = cdkDiffOutput.split('\n');
+  const stackStartPattern = new RegExp(`^Stack ${stackIdName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 
-  // If both values are objects and not null/undefined, do deep comparison
-  if (
-    oldValue &&
-    newValue &&
-    typeof oldValue === 'object' &&
-    typeof newValue === 'object' &&
-    !Array.isArray(oldValue) &&
-    !Array.isArray(newValue)
-  ) {
-    const allKeys = new Set([...Object.keys(oldValue), ...Object.keys(newValue)]);
-    const changedKeys = Array.from(allKeys).filter((key) => oldValue[key] !== newValue[key]);
-    let hasChanges = false;
+  let startIndex = -1;
+  let endIndex = -1;
 
-    changedKeys.forEach((key, index) => {
-      const oldProp = oldValue[key];
-      const newProp = newValue[key];
-      const isLastKey = index === changedKeys.length - 1;
-
-      if (oldProp !== newProp) {
-        if (
-          oldProp &&
-          newProp &&
-          typeof oldProp === 'object' &&
-          typeof newProp === 'object' &&
-          !Array.isArray(oldProp) &&
-          !Array.isArray(newProp)
-        ) {
-          // Recursively diff nested objects
-          changes.push(`${baseIndent}${isLastKey ? '└' : '├'}─ [~] ${key}`);
-          const nestedChanges = deepDiff(oldProp, newProp, key, `${baseIndent}${isLastKey ? ' ' : '│'}   `, true);
-          if (nestedChanges.length > 0) {
-            changes.push(...nestedChanges);
-            hasChanges = true;
-          }
-        } else if (oldProp === undefined && newProp !== undefined) {
-          // Property was added
-          changes.push(`${baseIndent}${isLastKey ? '└' : '├'}─ [+] ${key}`);
-          changes.push(`${baseIndent}${isLastKey ? ' ' : '│'}   └─ [+] ${JSON.stringify(newProp)}`);
-          hasChanges = true;
-        } else if (oldProp !== undefined && newProp === undefined) {
-          // Property was removed
-          changes.push(`${baseIndent}${isLastKey ? '└' : '├'}─ [-] ${key}`);
-          changes.push(`${baseIndent}${isLastKey ? ' ' : '│'}   └─ [-] ${JSON.stringify(oldProp)}`);
-          hasChanges = true;
-        } else {
-          // Simple value change
-          changes.push(`${baseIndent}${isLastKey ? '└' : '├'}─ [~] ${key}`);
-          changes.push(`${baseIndent}${isLastKey ? ' ' : '│'}   ├─ [-] ${JSON.stringify(oldProp)}`);
-          changes.push(`${baseIndent}${isLastKey ? ' ' : '│'}   └─ [+] ${JSON.stringify(newProp)}`);
-          hasChanges = true;
-        }
-      }
-    });
-
-    return hasChanges ? changes : [];
-  } else if (Array.isArray(oldValue) && Array.isArray(newValue)) {
-    // Handle arrays
-    const maxLength = Math.max(oldValue.length, newValue.length);
-    let hasChanges = false;
-
-    for (let i = 0; i < maxLength; i++) {
-      const oldItem = oldValue[i];
-      const newItem = newValue[i];
-      const isLastItem = i === maxLength - 1;
-
-      if (oldItem !== newItem) {
-        if (oldItem === undefined) {
-          // Item was added
-          changes.push(`${baseIndent}${isLastItem ? '└' : '├'}─ [+] ${path}[${i}]`);
-          changes.push(`${baseIndent}${isLastItem ? ' ' : '│'}   └─ [+] ${JSON.stringify(newItem)}`);
-          hasChanges = true;
-        } else if (newItem === undefined) {
-          // Item was removed
-          changes.push(`${baseIndent}${isLastItem ? '└' : '├'}─ [-] ${path}[${i}]`);
-          changes.push(`${baseIndent}${isLastItem ? ' ' : '│'}   └─ [-] ${JSON.stringify(oldItem)}`);
-          hasChanges = true;
-        } else if (typeof oldItem === 'object' && typeof newItem === 'object' && oldItem !== null && newItem !== null) {
-          // Recursively diff array items that are objects
-          changes.push(`${baseIndent}${isLastItem ? '└' : '├'}─ [~] ${path}[${i}]`);
-          const nestedChanges = deepDiff(
-            oldItem,
-            newItem,
-            `${path}[${i}]`,
-            `${baseIndent}${isLastItem ? ' ' : '│'}   `,
-            true
-          );
-          if (nestedChanges.length > 0) {
-            changes.push(...nestedChanges);
-            hasChanges = true;
-          }
-        } else {
-          // Simple value change in array
-          changes.push(`${baseIndent}${isLastItem ? '└' : '├'}─ [~] ${path}[${i}]`);
-          changes.push(`${baseIndent}${isLastItem ? ' ' : '│'}   ├─ [-] ${JSON.stringify(oldItem)}`);
-          changes.push(`${baseIndent}${isLastItem ? ' ' : '│'}   └─ [+] ${JSON.stringify(newItem)}`);
-          hasChanges = true;
-        }
-      }
+  // Find the start of this stack's diff output
+  for (let i = 0; i < lines.length; i++) {
+    if (stackStartPattern.test(lines[i])) {
+      startIndex = i;
+      break;
     }
-
-    return hasChanges ? changes : [];
-  } else {
-    // Simple value change (non-objects or arrays)
-    changes.push(`${baseIndent}${isLast ? '└' : '├'}─ [~] ${path}`);
-    changes.push(`${baseIndent}${isLast ? ' ' : '│'}   ├─ [-] ${JSON.stringify(oldValue)}`);
-    changes.push(`${baseIndent}${isLast ? ' ' : '│'}   └─ [+] ${JSON.stringify(newValue)}`);
-    return changes;
   }
+
+  if (startIndex === -1) {
+    return '';
+  }
+
+  // Find the end of this stack's diff output (next emoji line or end of file)
+  for (let i = startIndex + 1; i < lines.length; i++) {
+    const line = lines[i];
+    // Check if this line starts with an emoji (simplified pattern)
+    if (/^[^\s]*[✨🌊🏗📦]/u.test(line)) {
+      endIndex = i;
+      break;
+    }
+  }
+
+  if (endIndex === -1) {
+    endIndex = lines.length;
+  }
+
+  // Extract the lines between start and end, excluding the stack header line
+  const diffLines = lines.slice(startIndex + 1, endIndex);
+
+  // Find the "Resources" line and extract everything from there
+  let resourcesStartIndex = -1;
+  for (let i = 0; i < diffLines.length; i++) {
+    if (diffLines[i].trim() === 'Resources') {
+      resourcesStartIndex = i;
+      break;
+    }
+  }
+
+  if (resourcesStartIndex === -1) {
+    return '';
+  }
+
+  // Extract from "Resources" line onwards, but stop before the next emoji line
+  const resourcesLines = diffLines.slice(resourcesStartIndex);
+  const resultLines: string[] = [];
+
+  for (const line of resourcesLines) {
+    // Stop if we encounter an emoji line (indicating next stack or section)
+    if (/^[^\s]*[✨🌊🏗📦]/u.test(line)) {
+      break;
+    }
+    resultLines.push(line);
+  }
+
+  return resultLines.join('\n').trim();
 }
 
 function ignoreResource(change: ResourceDifference): boolean {
