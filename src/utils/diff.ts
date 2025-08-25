@@ -13,6 +13,14 @@ export type DiffSummary = {
 export type StackDiff = {
   summary: DiffSummary;
   markdown: string;
+  diffLines: DiffLine[];
+};
+
+export type DiffLine = {
+  jsonPathId: string;
+  logicalId: string;
+  lineContent: string;
+  gitDiffSign: string;
 };
 
 export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }, cdkDiffOutput: string) {
@@ -87,7 +95,8 @@ function generateStackDiff(stackIdName: string, templateDiff: TemplateDiff, cdkD
       removals: 0,
       updates: 0
     },
-    markdown: ''
+    markdown: '',
+    diffLines: []
   };
 
   // Extract the diff output for this specific stack from cdkDiffOutput
@@ -118,7 +127,7 @@ function generateStackDiff(stackIdName: string, templateDiff: TemplateDiff, cdkD
   return stackDiff;
 }
 
-function extractStackDiffOutput(stackIdName: string, cdkDiffOutput: string): string {
+function extractStackDiffOutput(stackIdName: string, cdkDiffOutput: string) {
   const lines = cdkDiffOutput.split('\n');
   const stackStartPattern = new RegExp(`^Stack ${stackIdName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 
@@ -141,7 +150,7 @@ function extractStackDiffOutput(stackIdName: string, cdkDiffOutput: string): str
   for (let i = startIndex + 1; i < lines.length; i++) {
     const line = lines[i];
     // Check if this line starts with an emoji (simplified pattern)
-    if (/^[^\s]*[✨🌊🏗📦]/u.test(line)) {
+    if (/^[^\s]*[✨]/u.test(line)) {
       endIndex = i;
       break;
     }
@@ -169,17 +178,96 @@ function extractStackDiffOutput(stackIdName: string, cdkDiffOutput: string): str
 
   // Extract from "Resources" line onwards, but stop before the next emoji line
   const resourcesLines = diffLines.slice(resourcesStartIndex);
-  const resultLines: string[] = [];
+  const resultLines: DiffLine[] = [];
+  let currentResourceType = '';
+  let currentLogicalId = '';
+  let currentJsonPath = '';
 
   for (const line of resourcesLines) {
-    // Stop if we encounter an emoji line (indicating next stack or section)
-    if (/^[^\s]*[✨🌊🏗📦]/u.test(line)) {
-      break;
+    const parsedLine = parseDiffLine(line, currentResourceType, currentLogicalId, currentJsonPath);
+    if (parsedLine) {
+      resultLines.push(parsedLine);
+
+      // Update context for nested lines
+      if (parsedLine.jsonPathId.includes('::')) {
+        // This is a main resource line
+        currentResourceType = parsedLine.jsonPathId;
+        currentLogicalId = parsedLine.logicalId;
+        currentJsonPath = parsedLine.jsonPathId;
+      } else {
+        // This is a nested property line
+        currentJsonPath = `${currentResourceType}.${parsedLine.jsonPathId}`;
+      }
     }
-    resultLines.push(line);
   }
 
-  return resultLines.join('\n').trim();
+  console.log('Parsed Diff Lines:', resultLines);
+
+  return resourcesLines.join('\n');
+}
+
+function parseDiffLine(
+  line: string,
+  currentResourceType: string,
+  currentLogicalId: string,
+  currentJsonPath: string
+): DiffLine | null {
+  // Skip empty lines or lines that don't contain diff information
+  if (!line.trim() || !line.includes('[')) {
+    return null;
+  }
+
+  // Extract git diff sign from the line
+  const diffSignMatch = line.match(/\[([~+\-])\]/);
+  if (!diffSignMatch) {
+    return null;
+  }
+  const gitDiffSign = diffSignMatch[1];
+
+  // Extract resource type and logical ID from the main resource line
+  // Pattern: [~] AWS::Lambda::Function Function Function76856677
+  const resourceMatch = line.match(/\[[~+\-]\]\s+([A-Za-z0-9:]+)\s+([A-Za-z0-9]+)\s+([A-Za-z0-9]+)/);
+
+  if (resourceMatch) {
+    const resourceType = resourceMatch[1];
+    const logicalId = resourceMatch[3];
+
+    return {
+      jsonPathId: resourceType,
+      logicalId: logicalId,
+      lineContent: line,
+      gitDiffSign: gitDiffSign
+    };
+  }
+
+  // Handle nested property lines like " ├─ [~] Code" or " │   └─ [~] .ZipFile:"
+  const nestedMatch = line.match(/([│\s├─└─]+)\[([~+\-])\]\s+(.+)/);
+  if (nestedMatch) {
+    const diffSign = nestedMatch[2];
+    const propertyPath = nestedMatch[3].trim();
+
+    // For nested properties, build the jsonPathId using the current context
+    let jsonPathId = propertyPath;
+
+    // Remove trailing colon if present
+    if (jsonPathId.endsWith(':')) {
+      jsonPathId = jsonPathId.slice(0, -1);
+    }
+
+    // If we have a current resource type, build the full path
+    if (currentResourceType) {
+      jsonPathId = `${currentResourceType}.${jsonPathId}`;
+    }
+
+    return {
+      jsonPathId: jsonPathId,
+      logicalId: currentLogicalId || 'UNKNOWN',
+      lineContent: line,
+      gitDiffSign: diffSign
+    };
+  }
+
+  return null;
 }
 
 function ignoreResource(change: ResourceDifference): boolean {

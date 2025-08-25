@@ -101,9 +101,10 @@ async function diff(stackSelectors: string, cloudAssemblyDirectory: string) {
 async function generateJsonDiffsAndCache(
   stackSelectors: string,
   templateDiffs: { [p: string]: TemplateDiff },
-  cloudAssemblyDirectory: string
+  cloudAssemblyDirectory: string,
+  cdkSummaryDiff: string
 ) {
-  const stackDiffs = generateDiffs(templateDiffs);
+  const stackDiffs = generateDiffs(templateDiffs, cdkSummaryDiff);
   if (!stackDiffs) {
     core.info('No changes detected in any stacks');
     return;
