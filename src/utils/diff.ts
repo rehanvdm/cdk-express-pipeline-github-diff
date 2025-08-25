@@ -102,8 +102,9 @@ function generateStackDiff(stackIdName: string, templateDiff: TemplateDiff, cdkD
   // Extract the diff output for this specific stack from cdkDiffOutput
   const stackDiffOutput = extractStackDiffOutput(stackIdName, cdkDiffOutput);
 
-  if (stackDiffOutput) {
-    stackDiff.markdown = stackDiffOutput;
+  if (stackDiffOutput.markdown) {
+    stackDiff.markdown = stackDiffOutput.markdown;
+    stackDiff.diffLines = stackDiffOutput.diffLines;
 
     // Calculate summary from the template diff
     templateDiff.resources.forEachDifference((logicalId: string, change: ResourceDifference) => {
@@ -127,7 +128,10 @@ function generateStackDiff(stackIdName: string, templateDiff: TemplateDiff, cdkD
   return stackDiff;
 }
 
-function extractStackDiffOutput(stackIdName: string, cdkDiffOutput: string) {
+function extractStackDiffOutput(
+  stackIdName: string,
+  cdkDiffOutput: string
+): { markdown: string; diffLines: DiffLine[] } {
   const lines = cdkDiffOutput.split('\n');
   const stackStartPattern = new RegExp(`^Stack ${stackIdName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 
@@ -143,7 +147,7 @@ function extractStackDiffOutput(stackIdName: string, cdkDiffOutput: string) {
   }
 
   if (startIndex === -1) {
-    return '';
+    return { markdown: '', diffLines: [] };
   }
 
   // Find the end of this stack's diff output (next emoji line or end of file)
@@ -173,7 +177,7 @@ function extractStackDiffOutput(stackIdName: string, cdkDiffOutput: string) {
   }
 
   if (resourcesStartIndex === -1) {
-    return '';
+    return { markdown: '', diffLines: [] };
   }
 
   // Extract from "Resources" line onwards, but stop before the next emoji line
@@ -181,36 +185,43 @@ function extractStackDiffOutput(stackIdName: string, cdkDiffOutput: string) {
   const resultLines: DiffLine[] = [];
   let currentResourceType = '';
   let currentLogicalId = '';
-  let currentJsonPath = '';
+  let currentPropertyPath = '';
 
-  for (const line of resourcesLines) {
-    const parsedLine = parseDiffLine(line, currentResourceType, currentLogicalId, currentJsonPath);
+  for (let i = 0; i < resourcesLines.length; i++) {
+    const line = resourcesLines[i];
+    const parsedLine = parseDiffLine(line, currentResourceType, currentLogicalId, currentPropertyPath);
+
     if (parsedLine) {
-      resultLines.push(parsedLine);
-
       // Update context for nested lines
       if (parsedLine.jsonPathId.includes('::')) {
         // This is a main resource line
         currentResourceType = parsedLine.jsonPathId;
         currentLogicalId = parsedLine.logicalId;
-        currentJsonPath = parsedLine.jsonPathId;
+        currentPropertyPath = '';
       } else {
-        // This is a nested property line
-        currentJsonPath = `${currentResourceType}.${parsedLine.jsonPathId}`;
+        // This is a nested property line - update the property path
+        const propertyName = parsedLine.jsonPathId.split('.').pop() || parsedLine.jsonPathId;
+        if (currentPropertyPath) {
+          currentPropertyPath = `${currentPropertyPath}.${propertyName}`;
+        } else {
+          currentPropertyPath = propertyName;
+        }
       }
+
+      resultLines.push(parsedLine);
     }
   }
 
   console.log('Parsed Diff Lines:', resultLines);
 
-  return resourcesLines.join('\n');
+  return { markdown: resourcesLines.join('\n'), diffLines: resultLines };
 }
 
 function parseDiffLine(
   line: string,
   currentResourceType: string,
   currentLogicalId: string,
-  currentJsonPath: string
+  currentPropertyPath: string
 ): DiffLine | null {
   // Skip empty lines or lines that don't contain diff information
   if (!line.trim() || !line.includes('[')) {
@@ -254,9 +265,18 @@ function parseDiffLine(
       jsonPathId = jsonPathId.slice(0, -1);
     }
 
+    // Remove leading dot if present (e.g., ".ZipFile" becomes "ZipFile")
+    if (jsonPathId.startsWith('.')) {
+      jsonPathId = jsonPathId.slice(1);
+    }
+
     // If we have a current resource type, build the full path
     if (currentResourceType) {
-      jsonPathId = `${currentResourceType}.${jsonPathId}`;
+      if (currentPropertyPath) {
+        jsonPathId = `${currentResourceType}.${currentPropertyPath}.${jsonPathId}`;
+      } else {
+        jsonPathId = `${currentResourceType}.${jsonPathId}`;
+      }
     }
 
     return {
