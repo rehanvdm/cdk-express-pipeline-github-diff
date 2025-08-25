@@ -58,6 +58,12 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
         }
       ]
     });
+
+    const vpc = new cdk.aws_ec2.Vpc(stackC, 'VPC');
+    const sg1 = new cdk.aws_ec2.SecurityGroup(stackC, 'SG1', {
+      vpc
+    });
+    sg1.addIngressRule(cdk.aws_ec2.Peer.anyIpv4(), cdk.aws_ec2.Port.tcp(443), 'Allow HTTPS traffic');
     new lambda.Function(stackC, 'Function', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
@@ -66,7 +72,14 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
         key1: 'value1',
         key2: 'value2'
       },
-      memorySize: 256
+      memorySize: 256,
+      vpc: vpc,
+      securityGroups: [
+        sg1,
+        new cdk.aws_ec2.SecurityGroup(stackC, 'SG2', {
+          vpc
+        })
+      ]
     });
   } else {
     new sns.Topic(stackA, 'TopicA', {
@@ -81,6 +94,14 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
       enforceSSL: true
     });
 
+    const vpc = new cdk.aws_ec2.Vpc(stackC, 'VPC', {
+      vpcName: 'VPC Changed',
+      maxAzs: 2
+    });
+    const sg1 = new cdk.aws_ec2.SecurityGroup(stackC, 'SG1', {
+      vpc
+    });
+    sg1.addIngressRule(cdk.aws_ec2.Peer.anyIpv4(), cdk.aws_ec2.Port.tcp(443), 'Allow HTTPS traffic');
     new lambda.Function(stackC, 'Function', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
@@ -89,7 +110,9 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
         key1: 'value1-change',
         key3: 'value3'
       },
-      memorySize: 512
+      memorySize: 512,
+      vpc: vpc,
+      securityGroups: [sg1]
     });
   }
 
@@ -102,21 +125,23 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
 }
 
 async function generateTemplateDiffs(diffFunc: (opts?: AssemblyDiffFuncArgs) => AssemblyDiff, cdkOutChange: string) {
-  // const cdkConsole = '';
-  const cdkToolkit = new Toolkit();
-  //   {
-  //   ioHost: {
-  //     notify: async function (msg) {
-  //       console.log(msg.message);
-  //       cdkConsole += stripAnsiCodes(msg.message) + '\n';
-  //     },
-  //     requestResponse: async function (msg) {
-  //       console.log(msg.message);
-  //       cdkConsole += stripAnsiCodes(msg.message) + '\n';
-  //       return msg.defaultResponse;
-  //     }
-  //   }
-  // }
+  let cdkDiffOutput = '';
+  const cdkToolkit = new Toolkit({
+    color: false,
+    ioHost: {
+      notify: async function (msg) {
+        if (msg.level === 'result') {
+          cdkDiffOutput += msg.message + '\n';
+        }
+      },
+      requestResponse: async function (msg) {
+        if (msg.level === 'result') {
+          cdkDiffOutput += msg.message + '\n';
+        }
+        return msg.defaultResponse;
+      }
+    }
+  });
 
   if (fs.existsSync(cdkOutChange)) {
     fs.rmSync(cdkOutChange, { recursive: true, force: true });
@@ -147,7 +172,7 @@ async function generateTemplateDiffs(diffFunc: (opts?: AssemblyDiffFuncArgs) => 
   // console.log('cdkConsole');
   // console.log(cdkConsole);
 
-  return templateDiffs;
+  return { templateDiffs, cdkDiffOutput };
 }
 
 describe('diff.ts', () => {
@@ -155,8 +180,8 @@ describe('diff.ts', () => {
     const cdkOut = path.join(__dirname, 'fixtures', 'cdk.out', 'testAssembly');
 
     // GH Action 1
-    const templateDiffs = await generateTemplateDiffs(testAssembly, cdkOut);
-    const stackDiffs = await generateDiffs(templateDiffs);
+    const testDiffRes = await generateTemplateDiffs(testAssembly, cdkOut);
+    const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput);
     if (stackDiffs) {
       await saveDiffs(stackDiffs, cdkOut);
     }

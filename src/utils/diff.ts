@@ -15,14 +15,14 @@ export type StackDiff = {
   markdown: string;
 };
 
-export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }) {
+export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }, cdkDiffOutput: string) {
   if (Object.keys(templateDiffs).length === 0) {
     return undefined;
   }
   const result: DiffResult = { stacks: {} };
   for (const [stackIdName, templateDiff] of Object.entries(templateDiffs)) {
     const stackId = stackIdName.split(' ')[0];
-    result.stacks[stackId] = generateStackDiff(templateDiff);
+    result.stacks[stackId] = generateStackDiff(stackIdName, templateDiff, cdkDiffOutput);
   }
 
   return result;
@@ -80,7 +80,7 @@ export function generateMarkdown(order: CdkExpressPipelineAssembly, diffResult: 
   return markdown;
 }
 
-function generateStackDiff(templateDiff: TemplateDiff): StackDiff {
+function generateStackDiff(stackIdName: string, templateDiff: TemplateDiff, cdkDiffOutput: string): StackDiff {
   const stackDiff: StackDiff = {
     summary: {
       additions: 0,
