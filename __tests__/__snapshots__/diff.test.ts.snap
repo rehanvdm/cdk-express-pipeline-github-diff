@@ -12,10 +12,13 @@ exports[`diff.ts test complex diff markdown 1`] = `
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
 -       [-] AWS::SNS::Topic TopicBB2A41848 TopicBB2A41848
++       [+] AWS::SNS::TopicPolicy TopicRPolicyD33151F3 TopicRPolicyD33151F3
 -       [~] AWS::SNS::Topic TopicRC70D74C1 TopicRC70D74C1 (requires replacement)
-!         └─ [~] DisplayName
-!             ├─ [-] "Topic R"
-!             └─ [+] "Topic R can change"
+!         ├─ [-] DeliveryStatusLogging
+!         │   └─ [-] [{"Protocol":"http/s"}]
+!         ├─ [~] DisplayName
+!         │   ├─ [-] "Topic R"
+!         │   └─ [+] "Topic R can change"
 -         └─ [~] TopicName (requires replacement)
 !             ├─ [-] "Topic R"
 !             └─ [+] "Topic R should not change"
@@ -23,6 +26,23 @@ exports[`diff.ts test complex diff markdown 1`] = `
   🏗 stage1
     📦 StackC (wave2_stage1_stack-c)
 +       [+] AWS::SNS::Topic TopicCB48CAADF TopicCB48CAADF
+!       [~] AWS::Lambda::Function Function76856677 Function76856677
+!         ├─ [~] Code
+!         │   └─ [~] ZipFile
+!         │       ├─ [-] "CHANGED CODE"
+!         │       └─ [+] "exports.handler = async function(event, context) { return \\"Hello World\\"; };"
+!         ├─ [~] Environment
+!         │   └─ [~] Variables
+!         │       ├─ [~] key1
+!         │       │   ├─ [-] "value1"
+!         │       │   └─ [+] "value1-change"
+!         │       ├─ [-] key2
+!         │       │   └─ [-] "value2"
+!         │       └─ [+] key3
+!         │           └─ [+] "value3"
+!         └─ [~] MemorySize
+!             ├─ [-] 256
+!             └─ [+] 512
 \`\`\`
 "
 `;

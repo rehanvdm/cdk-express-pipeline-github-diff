@@ -1,5 +1,4 @@
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
-//@ts-expect-error TS/JS import issue but works
 import { generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs } from '../src/utils/diff';
 import { DiffMethod, ExpandStackSelection, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import * as cdk from 'aws-cdk-lib';
@@ -8,8 +7,8 @@ import { CloudAssembly } from 'aws-cdk-lib/cx-api';
 import { CdkExpressPipeline, CdkExpressPipelineAssembly, ExpressStack } from 'cdk-express-pipeline';
 import path from 'node:path';
 import * as fs from 'node:fs';
-//@ts-expect-error TS/JS import issue but works
 import { CDK_EXPRESS_PIPELINE_JSON_FILE } from '../src/utils/shared';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 type AssemblyDiff = {
   assembly: CloudAssembly;
@@ -52,7 +51,22 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
     });
     new sns.Topic(stackB, 'TopicR', {
       topicName: 'Topic R',
-      displayName: 'Topic R'
+      displayName: 'Topic R',
+      loggingConfigs: [
+        {
+          protocol: sns.LoggingProtocol.HTTP
+        }
+      ]
+    });
+    new lambda.Function(stackC, 'Function', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline('CHANGED CODE'),
+      environment: {
+        key1: 'value1',
+        key2: 'value2'
+      },
+      memorySize: 256
     });
   } else {
     new sns.Topic(stackA, 'TopicA', {
@@ -63,7 +77,19 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
     });
     new sns.Topic(stackB, 'TopicR', {
       topicName: 'Topic R should not change',
-      displayName: 'Topic R can change'
+      displayName: 'Topic R can change',
+      enforceSSL: true
+    });
+
+    new lambda.Function(stackC, 'Function', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline('exports.handler = async function(event, context) { return "Hello World"; };'),
+      environment: {
+        key1: 'value1-change',
+        key3: 'value3'
+      },
+      memorySize: 512
     });
   }
 
@@ -131,7 +157,9 @@ describe('diff.ts', () => {
     // GH Action 1
     const templateDiffs = await generateTemplateDiffs(testAssembly, cdkOut);
     const stackDiffs = await generateDiffs(templateDiffs);
-    await saveDiffs(stackDiffs, cdkOut);
+    if (stackDiffs) {
+      await saveDiffs(stackDiffs, cdkOut);
+    }
 
     // GH Action 2
     const allStackDiffs = getSavedDiffs(cdkOut);
