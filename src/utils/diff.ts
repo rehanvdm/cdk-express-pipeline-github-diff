@@ -1,6 +1,7 @@
 import { ResourceDifference, type TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import * as fs from 'node:fs';
 import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
+import { minimatch } from 'minimatch';
 
 export type DiffResult = {
   stacks: Record<string, StackDiff>;
@@ -16,11 +17,46 @@ export type StackDiff = {
   diffLines: DiffLine[];
 };
 
-export type DiffLine = {
-  jsonPathId: string;
+export type DiffSign = '~' | '+' | '-';
+export type DiffLine = ResourceDiffLine | PropertyDiffLine | ValueDiffLine;
+
+export type ResourceDiffLine = {
+  type: 'Resource';
+  name: string;
+  id?: string;
   logicalId: string;
   lineContent: string;
-  gitDiffSign: string;
+  sign: DiffSign;
+  diffRulesApplied?: DiffRule[];
+};
+export type PropertyDiffLine = {
+  type: 'Property';
+  name: string;
+  lineContent: string;
+  sign: DiffSign;
+  depth: number;
+};
+export type ValueDiffLine = {
+  type: 'Value';
+  lineContent: string;
+  sign?: DiffSign;
+};
+
+export type DiffLinePath = DiffLine & {
+  path: string;
+  resourceSign: DiffSign;
+};
+
+export type DiffRule = {
+  name: string;
+  /**
+   * HIDE: Hide from diff output, the name of the rule will be shown next to the resource in the diff output
+   */
+  type: 'HIDE';
+  /**
+   * A glob pattern to match on the path: "ResourceName.Id.Property.NestedProperty.NestedProperty...."
+   */
+  path: string;
 };
 
 export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }, cdkDiffOutput: string) {
@@ -128,10 +164,7 @@ function generateStackDiff(stackIdName: string, templateDiff: TemplateDiff, cdkD
   return stackDiff;
 }
 
-function extractStackDiffOutput(
-  stackIdName: string,
-  cdkDiffOutput: string
-): { markdown: string; diffLines: DiffLine[] } {
+function extractStackDiffLines(stackIdName: string, cdkDiffOutput: string) {
   const lines = cdkDiffOutput.split('\n');
   const stackStartPattern = new RegExp(`^Stack ${stackIdName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 
@@ -147,7 +180,7 @@ function extractStackDiffOutput(
   }
 
   if (startIndex === -1) {
-    return { markdown: '', diffLines: [] };
+    return [];
   }
 
   // Find the end of this stack's diff output (next emoji line or end of file)
@@ -164,130 +197,186 @@ function extractStackDiffOutput(
     endIndex = lines.length;
   }
 
-  // Extract the lines between start and end, excluding the stack header line
-  const diffLines = lines.slice(startIndex + 1, endIndex);
-
+  const diffLines = lines.slice(startIndex, endIndex);
   // Find the "Resources" line and extract everything from there
   let resourcesStartIndex = -1;
   for (let i = 0; i < diffLines.length; i++) {
     if (diffLines[i].trim() === 'Resources') {
-      resourcesStartIndex = i;
+      resourcesStartIndex = i + 1;
       break;
     }
   }
 
-  if (resourcesStartIndex === -1) {
+  // Extract the lines between start and end, excluding the stack header line
+  return diffLines.slice(resourcesStartIndex);
+}
+
+function extractStackDiffOutput(
+  stackIdName: string,
+  cdkDiffOutput: string,
+  diffRules: DiffRule[] = []
+): { markdown: string; diffLines: DiffLine[] } {
+  const diffLines = extractStackDiffLines(stackIdName, cdkDiffOutput);
+  if (!diffLines.length) {
     return { markdown: '', diffLines: [] };
   }
 
-  // Extract from "Resources" line onwards, but stop before the next emoji line
-  const resourcesLines = diffLines.slice(resourcesStartIndex);
-  const resultLines: DiffLine[] = [];
-  let currentResourceType = '';
-  let currentLogicalId = '';
-  let currentPropertyPath = '';
+  const resourceRulesApplied: DiffRule[] = []; // Top level resources applied to, we need to output it somewhere (for properties we output on the resource line)
+  const diffLinesWithPath: DiffLinePath[] = [];
+  let path: string[] = [];
+  let lastResource: ResourceDiffLine | undefined = undefined;
+  let lastProperty: PropertyDiffLine | undefined = undefined;
 
-  for (let i = 0; i < resourcesLines.length; i++) {
-    const line = resourcesLines[i];
-    const parsedLine = parseDiffLine(line, currentResourceType, currentLogicalId, currentPropertyPath);
+  for (let i = 0; i < diffLines.length; i++) {
+    const line = diffLines[i];
+    const nextLie = i + 1 < diffLines.length ? diffLines[i + 1] : '';
+    const diffLine = parseDiffLine(line, nextLie);
 
-    if (parsedLine) {
-      // Update context for nested lines
-      if (parsedLine.jsonPathId.includes('::')) {
-        // This is a main resource line
-        currentResourceType = parsedLine.jsonPathId;
-        currentLogicalId = parsedLine.logicalId;
-        currentPropertyPath = '';
+    if (diffLine.type === 'Resource') {
+      path = [diffLine.name];
+      if (diffLine.id) {
+        path.push(diffLine.id);
+      }
+      lastProperty = undefined;
+      diffLine.diffRulesApplied = [];
+      lastResource = diffLine;
+    } else if (diffLine.type === 'Property') {
+      if (!lastProperty) {
+        path.push(diffLine.name);
+      } else if (lastProperty && diffLine.depth > lastProperty.depth) {
+        path.push(diffLine.name);
       } else {
-        // This is a nested property line - update the property path
-        const propertyName = parsedLine.jsonPathId.split('.').pop() || parsedLine.jsonPathId;
-        if (currentPropertyPath) {
-          currentPropertyPath = `${currentPropertyPath}.${propertyName}`;
-        } else {
-          currentPropertyPath = propertyName;
+        path.pop();
+      }
+      lastProperty = diffLine;
+    }
+
+    const pathString = path.join('.');
+    const rulesMatched = {
+      hide: false
+    };
+
+    for (const rule of diffRules) {
+      if (minimatch(pathString, rule.path)) {
+        if (rule.type === 'HIDE') {
+          rulesMatched.hide = true;
+          if (diffLine.type === 'Resource') {
+            resourceRulesApplied.push(rule);
+          } else {
+            const indexLastResource = diffLinesWithPath.reverse().findIndex((l) => l.type === 'Resource');
+            if (indexLastResource === -1) {
+              continue;
+            }
+            (diffLinesWithPath![indexLastResource] as ResourceDiffLine).diffRulesApplied!.push(rule);
+          }
         }
       }
-
-      resultLines.push(parsedLine);
     }
+
+    if (rulesMatched.hide) {
+      continue;
+    }
+
+    diffLinesWithPath.push({
+      ...diffLine,
+      path: path.join('.'),
+      resourceSign: lastResource!.sign
+    });
   }
 
-  console.log('Parsed Diff Lines:', resultLines);
+  function diffRulesOutput(diffRules: DiffRule[]) {
+    if (diffRules.length === 0) {
+      return '';
+    }
+    const grouped: Record<string, DiffRule[]> = diffRules.reduce(
+      (acc, r) => {
+        if (!acc[r.name]) acc[r.name] = [];
+        acc[r.name].push(r);
+        return acc;
+      },
+      {} as Record<string, DiffRule[]>
+    );
+    // Create a string like: RuleName(2), OtherRule(1)
+    return Object.entries(grouped)
+      .map(([name, groups]) => `${name}(${groups.length})`)
+      .join(', ');
+  }
 
-  return { markdown: resourcesLines.join('\n'), diffLines: resultLines };
+  let markdown = '';
+
+  if (resourceRulesApplied.length) {
+    markdown += `{Applied Resource Rules: ${diffRulesOutput(resourceRulesApplied)}}\n`;
+  }
+  for (const line of diffLinesWithPath) {
+    TODO git diff line and top bottom blocks
+    markdown += line.lineContent;
+    if (line.type === 'Resource' && line.diffRulesApplied?.length) {
+      markdown += ` {Applied Property Rules: ${diffRulesOutput(line.diffRulesApplied)}}`;
+    }
+    markdown += '\n';
+  }
+
+  // console.log('Parsed Diff Lines:', resultLines);
+  console.log('Parsed Diff Lines JSON:', JSON.stringify(diffLinesWithPath, null, 2));
+
+  return { markdown: markdown, diffLines: diffLinesWithPath };
 }
 
-function parseDiffLine(
-  line: string,
-  currentResourceType: string,
-  currentLogicalId: string,
-  currentPropertyPath: string
-): DiffLine | null {
-  // Skip empty lines or lines that don't contain diff information
-  if (!line.trim() || !line.includes('[')) {
-    return null;
-  }
-
-  // Extract git diff sign from the line
-  const diffSignMatch = line.match(/\[([~+\-])\]/);
-  if (!diffSignMatch) {
-    return null;
-  }
-  const gitDiffSign = diffSignMatch[1];
-
-  // Extract resource type and logical ID from the main resource line
-  // Pattern: [~] AWS::Lambda::Function Function Function76856677
-  const resourceMatch = line.match(/\[[~+\-]\]\s+([A-Za-z0-9:]+)\s+([A-Za-z0-9]+)\s+([A-Za-z0-9]+)/);
-
-  if (resourceMatch) {
-    const resourceType = resourceMatch[1];
-    const logicalId = resourceMatch[3];
-
-    return {
-      jsonPathId: resourceType,
-      logicalId: logicalId,
+function parseDiffLine(line: string, nextLie: string): DiffLine {
+  if (line[0] === '[') {
+    const splits = line.split(' ');
+    const resourceLine: ResourceDiffLine = {
+      type: 'Resource',
+      name: splits[1],
+      logicalId: '-',
       lineContent: line,
-      gitDiffSign: gitDiffSign
+      sign: line[1] as DiffSign
     };
-  }
 
-  // Handle nested property lines like " ├─ [~] Code" or " │   └─ [~] .ZipFile:"
-  const nestedMatch = line.match(/([│\s├─└─]+)\[([~+\-])\]\s+(.+)/);
-  if (nestedMatch) {
-    const diffSign = nestedMatch[2];
-    const propertyPath = nestedMatch[3].trim();
-
-    // For nested properties, build the jsonPathId using the current context
-    let jsonPathId = propertyPath;
-
-    // Remove trailing colon if present
-    if (jsonPathId.endsWith(':')) {
-      jsonPathId = jsonPathId.slice(0, -1);
+    if (resourceLine.sign === '+' || resourceLine.sign === '~') {
+      resourceLine.id = splits[2];
+      resourceLine.logicalId = splits[3];
+    } else {
+      resourceLine.logicalId = splits[2];
     }
+    return resourceLine;
+  } else {
+    const indexOfBracket = line.indexOf('] ');
+    const splits = line.slice(indexOfBracket + 2).split(' ');
+    const sign = line[indexOfBracket - 1] as DiffSign;
 
-    // Remove leading dot if present (e.g., ".ZipFile" becomes "ZipFile")
-    if (jsonPathId.startsWith('.')) {
-      jsonPathId = jsonPathId.slice(1);
-    }
-
-    // If we have a current resource type, build the full path
-    if (currentResourceType) {
-      if (currentPropertyPath) {
-        jsonPathId = `${currentResourceType}.${currentPropertyPath}.${jsonPathId}`;
-      } else {
-        jsonPathId = `${currentResourceType}.${jsonPathId}`;
+    if (splits.length >= 1) {
+      // Find the last indentation on the current line and the next line
+      // If the next line is more indented, this line is a property name
+      const depth = Math.max(line.indexOf('├─'), line.indexOf('└─'));
+      const nextDepth = Math.max(nextLie.indexOf('├─'), nextLie.indexOf('└─'));
+      if (nextDepth > depth) {
+        const propertyLine: PropertyDiffLine = {
+          type: 'Property',
+          name: splits[0],
+          lineContent: line,
+          depth,
+          sign
+        };
+        if (splits[0].startsWith('.') && splits[0].endsWith(':')) {
+          propertyLine.name = splits[0].slice(1, -1);
+        }
+        return propertyLine;
       }
+
+      return {
+        type: 'Value',
+        lineContent: line,
+        sign: sign
+      };
     }
 
     return {
-      jsonPathId: jsonPathId,
-      logicalId: currentLogicalId || 'UNKNOWN',
+      type: 'Value',
       lineContent: line,
-      gitDiffSign: diffSign
+      sign: sign
     };
   }
-
-  return null;
 }
 
 function ignoreResource(change: ResourceDifference): boolean {
