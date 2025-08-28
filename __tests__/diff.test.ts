@@ -291,15 +291,27 @@ describe('diff.ts', () => {
           type: 'HIDE_PROPERTIES',
           path: '*.Tags'
         }
+      ],
+
+      'Multiple rules': [
+        {
+          name: 'hide-topics-display-name-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*.DisplayName'
+        },
+        {
+          name: 'hide-topics-topic-name-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*.TopicName'
+        }
       ]
     };
 
     for (const [name, rules] of Object.entries(tests)) {
       const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput, rules);
-      if (stackDiffs) {
-        const markdown = generateMarkdown(shortHandOrder, stackDiffs);
-        expect(markdown).toMatchSnapshot(name);
-      }
+      expect(stackDiffs).toBeDefined();
+      const markdown = generateMarkdown(shortHandOrder, stackDiffs);
+      expect(markdown).toMatchSnapshot(name);
     }
   });
 });
