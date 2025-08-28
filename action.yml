@@ -29,6 +29,7 @@ inputs:
       An array of of objects indicating the CDK Cloud Assembly directories and the header to use when printing them.
       Can be specified instead of `cloud-assembly-directory` in mode `mode: print` when you want to diff multiple 
       assemblies or change the default header.
+      
       Format:
       ```yaml
       cloud-assemblies: |
@@ -53,7 +54,31 @@ inputs:
       The name property of the job, to correctly link to the action/job logs when generating the summaries.
       Optional for `mode: generate`
     required: false
+  diff-rules:
+    description: |
+      An array of objects indicating rules to apply to the diff output on the PR description.
+      Optional for `mode: generate`.
+      
+      Format:
+      ```yaml
+      diff-rules: |
+        - name: hide-all-sns-resources
+          type: HIDE_RESOURCE
+          path: AWS::SNS::Topic.*
+        - name: hide-all-sns-property-changes
+          type: HIDE_PROPERTIES
+          path: AWS::SNS::Topic.*
+      ```
+      
+      Properties:      
+       - `name`: The name of the rule shown next to the hidden resource/properties in the diff.
+       - `type`: The type of rule. Options are:
+         - `HIDE_RESOURCE`: Hides the entire resource diff if any property changes match the path
+         - `HIDE_PROPERTIES`: Hides only the property changes that match the path, but shows the resource and other property changes
+       - `path`: A glob pattern to match on the path with format: "ResourceName.ResourceId.Property.NestedProperty.NestedProperty...."
+                 If a ResourceId has / in its name, it will be replaced with _ to avoid issues with glob matching
 
+    required: false
 runs:
   using: node20
   main: dist/index.cjs

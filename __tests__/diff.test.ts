@@ -1,8 +1,6 @@
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import {
-  DiffLine,
   DiffLineOutput,
-  DiffResult,
   DiffRule,
   extractStackDiffOutput,
   generateDiffs,
@@ -214,7 +212,7 @@ describe('diff.ts', () => {
     const testDiffRes = await generateTemplateDiffs(testAssembly, cdkOut);
 
     const result: Record<string, string> = {};
-    for (const [stackIdName, templateDiff] of Object.entries(testDiffRes.templateDiffs)) {
+    for (const [stackIdName] of Object.entries(testDiffRes.templateDiffs)) {
       const stackId = stackIdName.split(' ')[0];
       result[stackId] = extractStackDiffOutput(stackIdName, testDiffRes.cdkDiffOutput)
         .diffLines.map((l: DiffLineOutput) => l.path + ' >> ' + l.lineContent)
@@ -236,7 +234,7 @@ describe('diff.ts', () => {
     const tests: Record<string, DiffRule[]> = {
       'Hide all SNS Topics - Resource level': [
         {
-          name: 'hide-all-sns-resources-changes',
+          name: 'hide-all-sns-resources',
           type: 'HIDE_RESOURCE',
           path: 'AWS::SNS::Topic.*'
         }
@@ -251,7 +249,7 @@ describe('diff.ts', () => {
 
       'Hide only TopicA - Resource level': [
         {
-          name: 'hide-all-topica-resources-changes',
+          name: 'hide-all-topica-resources',
           type: 'HIDE_RESOURCE',
           path: 'AWS::SNS::Topic.TopicA*'
         }
@@ -281,7 +279,7 @@ describe('diff.ts', () => {
 
       'Hide Lambda changes to all Lambdas with env key1': [
         {
-          name: 'hide-topics-display-name-changes',
+          name: 'hide-env-key1-changes',
           type: 'HIDE_PROPERTIES',
           path: 'AWS::Lambda::Function.*.Environment.Variables.key1'
         }
@@ -289,7 +287,7 @@ describe('diff.ts', () => {
 
       'Hide all tag changes': [
         {
-          name: 'hide-all-tags',
+          name: 'hide-all-tag-changes',
           type: 'HIDE_PROPERTIES',
           path: '*.Tags'
         }

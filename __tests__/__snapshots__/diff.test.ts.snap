@@ -47,7 +47,7 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide Lambda changes to
 !              [+]     "Value": "VPC Changed"
 !              [ ]   }
 !              [ ] ]
-!      [~] AWS::Lambda::Function Function Function76856677 {Applied Property Diff Rules: hide-topics-display-name-changes(3)}
+!      [~] AWS::Lambda::Function Function Function76856677 {Applied Property Diff Rules: hide-env-key1-changes(3)}
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
 !       │       ├─ [-] CHANGED CODE
@@ -225,10 +225,10 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topics - 
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
-       {Applied Resource Diff Rules: hide-all-sns-resources-changes(1)}
+       {Applied Resource Diff Rules: hide-all-sns-resources(1)}
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
-       {Applied Resource Diff Rules: hide-all-sns-resources-changes(1)}
+       {Applied Resource Diff Rules: hide-all-sns-resources(1)}
 -      [-] AWS::SNS::Topic TopicBB2A41848 destroy
 +      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
 🌊 wave2
@@ -388,17 +388,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all tag changes 1
     📦 StackC (wave2_stage1_stack-c)
 -      [-] AWS::EC2::SecurityGroup SG20CE3219C destroy
 +      [+] AWS::SNS::Topic TopicC TopicCB48CAADF
-!      [~] AWS::EC2::VPC VPC VPCB9E5F0B4 {Applied Property Diff Rules: hide-all-tags(9)}
-!      [~] AWS::EC2::InternetGateway VPC/IGW VPCIGWB7E252D3
-!       └─ [~] Tags
-!           └─ @@ -1,6 +1,6 @@
-!              [ ] [
-!              [ ]   {
-!              [ ]     "Key": "Name",
-!              [-]     "Value": "wave2_stage1_stack-c/VPC"
-!              [+]     "Value": "VPC Changed"
-!              [ ]   }
-!              [ ] ]
+!      [~] AWS::EC2::VPC VPC VPCB9E5F0B4 {Applied Property Diff Rules: hide-all-tag-changes(9)}
+!      [~] AWS::EC2::InternetGateway VPC/IGW VPCIGWB7E252D3 {Applied Property Diff Rules: hide-all-tag-changes(9)}
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
@@ -437,7 +428,7 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide only TopicA - Res
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
-       {Applied Resource Diff Rules: hide-all-topica-resources-changes(1)}
+       {Applied Resource Diff Rules: hide-all-topica-resources(1)}
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
 -      [-] AWS::SNS::Topic TopicBB2A41848 destroy
@@ -515,6 +506,86 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide only TopicA chang
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
 !      [~] AWS::SNS::Topic TopicA TopicA1C813746 {Applied Property Diff Rules: hide-topica-property-changes(3)}
+  🏗 wave1stage2
+    📦 StackB (wave1_wave1stage2_stack-b)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+!      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace
+!       ├─ [-] DeliveryStatusLogging
+!       │   └─ [{"Protocol":"http/s"}]
+!       ├─ [~] DisplayName
+!       │   ├─ [-] Topic R
+!       │   └─ [+] Topic R can change
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+🌊 wave2
+  🏗 stage1
+    📦 StackC (wave2_stage1_stack-c)
+-      [-] AWS::EC2::SecurityGroup SG20CE3219C destroy
++      [+] AWS::SNS::Topic TopicC TopicCB48CAADF
+!      [~] AWS::EC2::VPC VPC VPCB9E5F0B4
+!       └─ [~] Tags
+!           └─ @@ -1,6 +1,6 @@
+!              [ ] [
+!              [ ]   {
+!              [ ]     "Key": "Name",
+!              [-]     "Value": "wave2_stage1_stack-c/VPC"
+!              [+]     "Value": "VPC Changed"
+!              [ ]   }
+!              [ ] ]
+!      [~] AWS::EC2::InternetGateway VPC/IGW VPCIGWB7E252D3
+!       └─ [~] Tags
+!           └─ @@ -1,6 +1,6 @@
+!              [ ] [
+!              [ ]   {
+!              [ ]     "Key": "Name",
+!              [-]     "Value": "wave2_stage1_stack-c/VPC"
+!              [+]     "Value": "VPC Changed"
+!              [ ]   }
+!              [ ] ]
+!      [~] AWS::Lambda::Function Function Function76856677
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] CHANGED CODE
+!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       ├─ [~] Environment
+!       │   └─ [~] .Variables:
+!       │       ├─ [~] .key1:
+!       │       │   ├─ [-] value1
+!       │       │   └─ [+] value1-change
+!       │       ├─ [-] Removed: .key2
+!       │       └─ [+] Added: .key3
+!       ├─ [~] MemorySize
+!       │   ├─ [-] 256
+!       │   └─ [+] 512
+!       └─ [~] VpcConfig
+!           └─ [~] .SecurityGroupIds:
+!               └─ @@ -4,11 +4,5 @@
+!                  [ ]       "SG1BA065B6E",
+!                  [ ]       "GroupId"
+!                  [ ]     ]
+!                  [-]   },
+!                  [-]   {
+!                  [-]     "Fn::GetAtt": [
+!                  [-]       "SG20CE3219C",
+!                  [-]       "GroupId"
+!                  [-]     ]
+!                  [ ]   }
+!                  [ ] ]
+\`\`\`
+"
+`;
+
+exports[`diff.ts test complex diff markdown - no diff rules 1`] = `
+"\`\`\`diff
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746
+!       └─ [~] DisplayName
+!           ├─ [-] Topic A
+!           └─ [+] Topic A Change
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
 -      [-] AWS::SNS::Topic TopicBB2A41848 destroy

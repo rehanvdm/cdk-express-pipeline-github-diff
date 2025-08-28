@@ -49,16 +49,21 @@ export type DiffLineOutput = DiffLine & {
   show: boolean;
 };
 
+/**
+ * Hides CDK diff lines that are output on the PR Description based on rules
+ */
 export type DiffRule = {
   name: string;
-  // TODO: FIX
+
   /**
-   * HIDE: Hide from diff output, the name of the rule will be shown next to the resource in the diff output
+   * HIDE_RESOURCE: Hides the entire resource diff if any property changes match the path
+   * HIDE_PROPERTIES: Hides only the property changes that match the path, but shows the resource and other property changes
    */
   type: 'HIDE_RESOURCE' | 'HIDE_PROPERTIES';
 
   /**
-   * A glob pattern to match on the path: "ResourceName.Id.Property.NestedProperty.NestedProperty...."
+   * A glob pattern to match on the path: "ResourceName.ResourceId.Property.NestedProperty.NestedProperty...."
+   * If a ResourceId has / in its name, it will be replaced with _ to avoid issues with glob matching
    */
   path: string;
 };
