@@ -40,33 +40,41 @@ export type ValueDiffLine = {
   type: 'Value';
   lineContent: string;
   sign?: DiffSign;
+  depth: number;
 };
 
-export type DiffLinePath = DiffLine & {
+export type DiffLineOutput = DiffLine & {
   path: string;
   resourceSign: DiffSign;
+  show: boolean;
 };
 
 export type DiffRule = {
   name: string;
+  // TODO: FIX
   /**
    * HIDE: Hide from diff output, the name of the rule will be shown next to the resource in the diff output
    */
-  type: 'HIDE';
+  type: 'HIDE_RESOURCE' | 'HIDE_PROPERTIES';
+
   /**
    * A glob pattern to match on the path: "ResourceName.Id.Property.NestedProperty.NestedProperty...."
    */
   path: string;
 };
 
-export function generateDiffs(templateDiffs: { [name: string]: TemplateDiff }, cdkDiffOutput: string) {
+export function generateDiffs(
+  templateDiffs: { [name: string]: TemplateDiff },
+  cdkDiffOutput: string,
+  diffRules: DiffRule[]
+) {
   if (Object.keys(templateDiffs).length === 0) {
     return undefined;
   }
   const result: DiffResult = { stacks: {} };
   for (const [stackIdName, templateDiff] of Object.entries(templateDiffs)) {
     const stackId = stackIdName.split(' ')[0];
-    result.stacks[stackId] = generateStackDiff(stackIdName, templateDiff, cdkDiffOutput);
+    result.stacks[stackId] = generateStackDiff(stackIdName, templateDiff, cdkDiffOutput, diffRules);
   }
 
   return result;
@@ -124,7 +132,12 @@ export function generateMarkdown(order: CdkExpressPipelineAssembly, diffResult: 
   return markdown;
 }
 
-function generateStackDiff(stackIdName: string, templateDiff: TemplateDiff, cdkDiffOutput: string): StackDiff {
+function generateStackDiff(
+  stackIdName: string,
+  templateDiff: TemplateDiff,
+  cdkDiffOutput: string,
+  diffRules: DiffRule[]
+): StackDiff {
   const stackDiff: StackDiff = {
     summary: {
       additions: 0,
@@ -136,7 +149,7 @@ function generateStackDiff(stackIdName: string, templateDiff: TemplateDiff, cdkD
   };
 
   // Extract the diff output for this specific stack from cdkDiffOutput
-  const stackDiffOutput = extractStackDiffOutput(stackIdName, cdkDiffOutput);
+  const stackDiffOutput = extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules);
 
   if (stackDiffOutput.markdown) {
     stackDiff.markdown = stackDiffOutput.markdown;
@@ -211,6 +224,23 @@ function extractStackDiffLines(stackIdName: string, cdkDiffOutput: string) {
   return diffLines.slice(resourcesStartIndex);
 }
 
+function diffRulesToString(diffRules: DiffRule[]) {
+  if (diffRules.length === 0) {
+    return '';
+  }
+  const grouped: Record<string, DiffRule[]> = diffRules.reduce(
+    (acc, r) => {
+      if (!acc[r.name]) acc[r.name] = [];
+      acc[r.name].push(r);
+      return acc;
+    },
+    {} as Record<string, DiffRule[]>
+  );
+  // Create a string like: RuleName(2), OtherRule(1)
+  return Object.entries(grouped)
+    .map(([name, groups]) => `${name}(${groups.length})`)
+    .join(', ');
+}
 function extractStackDiffOutput(
   stackIdName: string,
   cdkDiffOutput: string,
@@ -221,8 +251,10 @@ function extractStackDiffOutput(
     return { markdown: '', diffLines: [] };
   }
 
-  const resourceRulesApplied: DiffRule[] = []; // Top level resources applied to, we need to output it somewhere (for properties we output on the resource line)
-  const diffLinesWithPath: DiffLinePath[] = [];
+  // Top level resources applied to, we need to output it somewhere (for properties we output on the resource line)
+  const resourceRulesApplied: DiffRule[] = [];
+
+  const diffLinesOutput: DiffLineOutput[] = [];
   let path: string[] = [];
   let lastResource: ResourceDiffLine | undefined = undefined;
   let lastProperty: PropertyDiffLine | undefined = undefined;
@@ -245,81 +277,93 @@ function extractStackDiffOutput(
         path.push(diffLine.name);
       } else if (lastProperty && diffLine.depth > lastProperty.depth) {
         path.push(diffLine.name);
-      } else {
+      } else if (lastProperty && diffLine.depth < lastProperty.depth) {
         path.pop();
+        path.push(diffLine.name);
       }
       lastProperty = diffLine;
+    } else if (diffLine.type === 'Value') {
+      if (diffLine.lineContent.includes('Removed: .key2')) {
+        console.log('debug');
+      }
+      if (lastProperty && diffLine.depth === lastProperty.depth) {
+        path.pop();
+      }
     }
 
     const pathString = path.join('.');
-    const rulesMatched = {
-      hide: false
-    };
-
+    let show = true;
     for (const rule of diffRules) {
       if (minimatch(pathString, rule.path)) {
-        if (rule.type === 'HIDE') {
-          rulesMatched.hide = true;
+        if (rule.type === 'HIDE_RESOURCE') {
           if (diffLine.type === 'Resource') {
-            resourceRulesApplied.push(rule);
+            if (diffLine.sign === '~') {
+              show = false;
+              resourceRulesApplied.push(rule);
+            }
           } else {
-            const indexLastResource = diffLinesWithPath.reverse().findIndex((l) => l.type === 'Resource');
+            show = false;
+
+            // Also apply to ALL the lines of the resource that we already have
+            // (?not needed => and create a new rule to exclude new properties for this resource
+            const indexLastResource = diffLinesOutput.findLastIndex((l) => l.type === 'Resource');
             if (indexLastResource === -1) {
               continue;
             }
-            (diffLinesWithPath![indexLastResource] as ResourceDiffLine).diffRulesApplied!.push(rule);
+
+            const resourcePath = diffLinesOutput![indexLastResource].path.split('.').slice(0, 2).join('.');
+            const resourcePropertyIndex = -1;
+            do {
+              const resourcePropertyIndex = diffLinesOutput.findIndex((l) => l.path.startsWith(resourcePath) && l.show);
+              if (resourcePropertyIndex !== -1) {
+                diffLinesOutput[resourcePropertyIndex].show = false;
+                if (diffLinesOutput[resourcePropertyIndex].type === 'Resource') {
+                  resourceRulesApplied.push(rule);
+                }
+              }
+            } while (resourcePropertyIndex !== -1);
+          }
+        } else if (rule.type === 'HIDE_PROPERTIES') {
+          if (diffLine.type !== 'Resource') {
+            const indexLastResource = diffLinesOutput.findLastIndex((l) => l.type === 'Resource');
+            if (indexLastResource === -1 || diffLinesOutput![indexLastResource].resourceSign !== '~') {
+              continue;
+            }
+            (diffLinesOutput![indexLastResource] as ResourceDiffLine).diffRulesApplied!.push(rule);
+            show = false;
           }
         }
       }
     }
 
-    if (rulesMatched.hide) {
-      continue;
-    }
-
-    diffLinesWithPath.push({
+    diffLinesOutput.push({
       ...diffLine,
       path: path.join('.'),
-      resourceSign: lastResource!.sign
+      resourceSign: lastResource!.sign,
+      show
     });
   }
 
-  function diffRulesOutput(diffRules: DiffRule[]) {
-    if (diffRules.length === 0) {
-      return '';
-    }
-    const grouped: Record<string, DiffRule[]> = diffRules.reduce(
-      (acc, r) => {
-        if (!acc[r.name]) acc[r.name] = [];
-        acc[r.name].push(r);
-        return acc;
-      },
-      {} as Record<string, DiffRule[]>
-    );
-    // Create a string like: RuleName(2), OtherRule(1)
-    return Object.entries(grouped)
-      .map(([name, groups]) => `${name}(${groups.length})`)
-      .join(', ');
-  }
-
-  let markdown = '';
-
+  const markdown = [];
   if (resourceRulesApplied.length) {
-    markdown += `{Applied Resource Rules: ${diffRulesOutput(resourceRulesApplied)}}\n`;
+    markdown.push(`       {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
   }
-  for (const line of diffLinesWithPath) {
-    TODO git diff line and top bottom blocks
-    markdown += line.lineContent;
-    if (line.type === 'Resource' && line.diffRulesApplied?.length) {
-      markdown += ` {Applied Property Rules: ${diffRulesOutput(line.diffRulesApplied)}}`;
+  for (const line of diffLinesOutput) {
+    if (!line.show) {
+      continue;
     }
-    markdown += '\n';
+    const gitDiffSign = line.resourceSign === '~' ? '!' : line.sign;
+    let lineContent = `${gitDiffSign}      ${line.lineContent}`;
+    if (line.type === 'Resource' && line.diffRulesApplied?.length) {
+      lineContent += ` {Applied Property Diff Rules: ${diffRulesToString(line.diffRulesApplied)}}`;
+    }
+    markdown.push(lineContent);
   }
 
-  // console.log('Parsed Diff Lines:', resultLines);
-  console.log('Parsed Diff Lines JSON:', JSON.stringify(diffLinesWithPath, null, 2));
+  // console.log('Parsed Diff Lines JSON:', JSON.stringify(diffLinesOutput, null, 2));
+  console.log('Parsed Diff Lines JSON:', diffLinesOutput.map((l) => l.path + ' >> ' + l.lineContent).join('\n'));
 
-  return { markdown: markdown, diffLines: diffLinesWithPath };
+  return { markdown: markdown.join('\n'), diffLines: diffLinesOutput };
 }
 
 function parseDiffLine(line: string, nextLie: string): DiffLine {
@@ -345,11 +389,12 @@ function parseDiffLine(line: string, nextLie: string): DiffLine {
     const splits = line.slice(indexOfBracket + 2).split(' ');
     const sign = line[indexOfBracket - 1] as DiffSign;
 
+    // Find the last indentation on the current line and the next line
+    const depth = Math.max(line.indexOf('├─'), line.indexOf('└─'));
+    const nextDepth = Math.max(nextLie.indexOf('├─'), nextLie.indexOf('└─'));
+
     if (splits.length >= 1) {
-      // Find the last indentation on the current line and the next line
       // If the next line is more indented, this line is a property name
-      const depth = Math.max(line.indexOf('├─'), line.indexOf('└─'));
-      const nextDepth = Math.max(nextLie.indexOf('├─'), nextLie.indexOf('└─'));
       if (nextDepth > depth) {
         const propertyLine: PropertyDiffLine = {
           type: 'Property',
@@ -367,14 +412,16 @@ function parseDiffLine(line: string, nextLie: string): DiffLine {
       return {
         type: 'Value',
         lineContent: line,
-        sign: sign
+        sign: sign,
+        depth
       };
     }
 
     return {
       type: 'Value',
       lineContent: line,
-      sign: sign
+      sign: sign,
+      depth
     };
   }
 }

@@ -1,5 +1,5 @@
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
-import { generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs } from '../src/utils/diff';
+import { DiffRule, generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs } from '../src/utils/diff';
 import { DiffMethod, ExpandStackSelection, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as sns from 'aws-cdk-lib/aws-sns';
@@ -176,7 +176,7 @@ async function generateTemplateDiffs(diffFunc: (opts?: AssemblyDiffFuncArgs) => 
 }
 
 describe('diff.ts', () => {
-  it('test complex diff markdown', async () => {
+  it('test complex diff markdown - no diff rules', async () => {
     const cdkOut = path.join(__dirname, 'fixtures', 'cdk.out', 'testAssembly');
 
     // GH Action 1
@@ -197,5 +197,74 @@ describe('diff.ts', () => {
     //fs.writeFileSync('__tests__/diff-output-markdown.md', result);
 
     expect(markdown).toMatchSnapshot();
+  });
+
+  it('test complex diff markdown - diff rules', async () => {
+    const cdkOut = path.join(__dirname, 'fixtures', 'cdk.out', 'testAssembly');
+    const testDiffRes = await generateTemplateDiffs(testAssembly, cdkOut);
+
+    const shortHandOrder: CdkExpressPipelineAssembly = JSON.parse(
+      fs.readFileSync(path.join(cdkOut, CDK_EXPRESS_PIPELINE_JSON_FILE), 'utf-8')
+    );
+
+    const tests: Record<string, DiffRule[]> = {
+      'Hide all SNS Changes - Resource level': [
+        {
+          name: 'hide-all-sns-resources-changes',
+          type: 'HIDE_RESOURCE',
+          path: 'AWS::SNS::Topic.*'
+        }
+      ],
+      'Hide all SNS Changes - Property level': [
+        {
+          name: 'hide-all-sns-property-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*'
+        }
+      ],
+
+      'Hide only SNS Changes for TopicA - Resource level': [
+        {
+          name: 'hide-all-topica-resources-changes',
+          type: 'HIDE_RESOURCE',
+          path: 'AWS::SNS::Topic.TopicA*'
+        }
+      ],
+      'Hide only SNS Changes for TopicA - Property level': [
+        {
+          name: 'hide-topica-property-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.TopicA*'
+        }
+      ],
+
+      'Hide all SNS Topics that have Display Name changes': [
+        {
+          name: 'hide-topics-with-display-name-changes',
+          type: 'HIDE_RESOURCE',
+          path: 'AWS::SNS::Topic.*.DisplayName'
+        }
+      ],
+      'Hide all SNS Topic Display Name changes': [
+        {
+          name: 'hide-topics-display-name-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*.DisplayName'
+        }
+      ],
+      'Changes to all Lambdas with env key1': [
+        {
+          name: 'hide-topics-display-name-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::Lambda::*.Function.Code.Variables.key1'
+        }
+      ]
+    };
+
+    for (const [name, rules] of Object.entries(tests)) {
+      const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput, rules);
+      const markdown = generateMarkdown(shortHandOrder, stackDiffs);
+      expect(markdown).toMatchSnapshot(name);
+    }
   });
 });
