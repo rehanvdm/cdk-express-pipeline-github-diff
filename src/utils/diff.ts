@@ -257,6 +257,10 @@ export function extractStackDiffOutput(
     return { markdown: '', diffLines: [] };
   }
 
+  console.log('Cdk Diff Output:', cdkDiffOutput);
+
+  console.log('Diff Lines JSON:', JSON.stringify(diffLines, null, 2));
+
   // Top level resources applied to, we need to output it somewhere (for properties we output on the resource line)
   const resourceRulesApplied: DiffRule[] = [];
 
@@ -371,7 +375,7 @@ export function extractStackDiffOutput(
     markdown.push(lineContent);
   }
 
-  // console.log('Parsed Diff Lines JSON:', JSON.stringify(diffLinesOutput, null, 2));
+  console.log('Parsed Diff Lines JSON:', JSON.stringify(diffLinesOutput, null, 2));
   // console.log('Parsed Diff Lines JSON:', diffLinesOutput.map((l) => l.path + ' >> ' + l.lineContent).join('\n'));
 
   return { markdown: markdown.join('\n'), diffLines: diffLinesOutput };
