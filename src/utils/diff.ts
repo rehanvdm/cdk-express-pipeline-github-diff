@@ -282,23 +282,14 @@ export function extractStackDiffOutput(
       propertyStack.push(diffLine);
       path.push(diffLine.name);
     } else if (diffLine.type === 'Value') {
-      // For value lines that represent property removals/additions, we need to adjust the path
-      if (diffLine.lineContent.includes('Removed: .') || diffLine.lineContent.includes('Added: .')) {
-        // These lines represent property removals/additions at the parent level
-        // So we need to remove the last property from the path, but only temporarily for this line
-        // We'll create a temporary path for this line without modifying the main path state
-        const tempPath = [...path];
-        if (propertyStack.length > 0) {
-          tempPath.pop();
+      // For Value lines, we need to manage the path stack based on depth
+      // Special case: depth -1 means keep current path (these are diff content lines)
+      if (diffLine.depth !== -1) {
+        // Pop properties from the stack if the Value line is at a shallower or equal depth
+        while (propertyStack.length > 0 && propertyStack[propertyStack.length - 1].depth >= diffLine.depth) {
+          propertyStack.pop();
+          path.pop();
         }
-        // Use the temporary path for this line
-        diffLinesOutput.push({
-          ...diffLine,
-          path: tempPath.join('.'),
-          resourceSign: lastResource!.sign,
-          show: true
-        });
-        continue; // Skip the normal path assignment below
       }
     }
 
