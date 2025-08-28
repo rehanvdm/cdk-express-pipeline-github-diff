@@ -241,7 +241,8 @@ function diffRulesToString(diffRules: DiffRule[]) {
     .map(([name, groups]) => `${name}(${groups.length})`)
     .join(', ');
 }
-function extractStackDiffOutput(
+
+export function extractStackDiffOutput(
   stackIdName: string,
   cdkDiffOutput: string,
   diffRules: DiffRule[] = []
@@ -361,7 +362,7 @@ function extractStackDiffOutput(
   }
 
   // console.log('Parsed Diff Lines JSON:', JSON.stringify(diffLinesOutput, null, 2));
-  console.log('Parsed Diff Lines JSON:', diffLinesOutput.map((l) => l.path + ' >> ' + l.lineContent).join('\n'));
+  // console.log('Parsed Diff Lines JSON:', diffLinesOutput.map((l) => l.path + ' >> ' + l.lineContent).join('\n'));
 
   return { markdown: markdown.join('\n'), diffLines: diffLinesOutput };
 }

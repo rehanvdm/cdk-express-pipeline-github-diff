@@ -1,5 +1,14 @@
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
-import { DiffRule, generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs } from '../src/utils/diff';
+import {
+  DiffLine,
+  DiffResult,
+  DiffRule,
+  extractStackDiffOutput,
+  generateDiffs,
+  generateMarkdown,
+  getSavedDiffs,
+  saveDiffs
+} from '../src/utils/diff';
 import { DiffMethod, ExpandStackSelection, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as sns from 'aws-cdk-lib/aws-sns';
@@ -197,6 +206,22 @@ describe('diff.ts', () => {
     //fs.writeFileSync('__tests__/diff-output-markdown.md', result);
 
     expect(markdown).toMatchSnapshot();
+  });
+
+  it('test paths', async () => {
+    const cdkOut = path.join(__dirname, 'fixtures', 'cdk.out', 'testAssembly');
+    const testDiffRes = await generateTemplateDiffs(testAssembly, cdkOut);
+
+    const result: Record<string, string> = {};
+    for (const [stackIdName, templateDiff] of Object.entries(testDiffRes.templateDiffs)) {
+      const stackId = stackIdName.split(' ')[0];
+      result[stackId] = extractStackDiffOutput(stackIdName, testDiffRes.cdkDiffOutput)
+        .diffLines.map((l: DiffLine) => l.path + ' >> ' + l.lineContent)
+        .join('\n');
+    }
+
+    expect(testDiffRes.cdkDiffOutput).toMatchSnapshot();
+    expect(result).toMatchSnapshot();
   });
 
   it('test complex diff markdown - diff rules', async () => {
