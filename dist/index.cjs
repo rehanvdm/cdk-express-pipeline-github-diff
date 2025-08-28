@@ -387548,6 +387548,8 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
   if (!diffLines.length) {
     return { markdown: "", diffLines: [] };
   }
+  console.log("Cdk Diff Output:", cdkDiffOutput);
+  console.log("Diff Lines JSON:", JSON.stringify(diffLines, null, 2));
   const resourceRulesApplied = [];
   const diffLinesOutput = [];
   let path3 = [];
@@ -387642,6 +387644,7 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
     }
     markdown.push(lineContent);
   }
+  console.log("Parsed Diff Lines JSON:", JSON.stringify(diffLinesOutput, null, 2));
   return { markdown: markdown.join("\n"), diffLines: diffLinesOutput };
 }
 function parseDiffLine(line, nextLie) {
