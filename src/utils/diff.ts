@@ -293,7 +293,11 @@ export function extractStackDiffOutput(
       }
     }
 
-    const pathString = path.join('.');
+    // Some resources can have / in their name like the L3 for VPC has a resource:
+    // AWS::EC2::InternetGateway VPC/IGW VPCIGWB7E252D3
+    // minmatch treats this as a path separator, so we need to replace it with something else otherwise * and ** does
+    // not work as expected
+    const pathString = path.join('.').replaceAll('/', '_');
     let show = true;
     for (const rule of diffRules) {
       if (minimatch(pathString, rule.path)) {

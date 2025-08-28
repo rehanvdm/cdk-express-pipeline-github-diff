@@ -234,14 +234,14 @@ describe('diff.ts', () => {
     );
 
     const tests: Record<string, DiffRule[]> = {
-      'Hide all SNS Changes - Resource level': [
+      'Hide all SNS Topics - Resource level': [
         {
           name: 'hide-all-sns-resources-changes',
           type: 'HIDE_RESOURCE',
           path: 'AWS::SNS::Topic.*'
         }
       ],
-      'Hide all SNS Changes - Property level': [
+      'Hide all SNS Topic Changes - Property level': [
         {
           name: 'hide-all-sns-property-changes',
           type: 'HIDE_PROPERTIES',
@@ -249,14 +249,14 @@ describe('diff.ts', () => {
         }
       ],
 
-      'Hide only SNS Changes for TopicA - Resource level': [
+      'Hide only TopicA - Resource level': [
         {
           name: 'hide-all-topica-resources-changes',
           type: 'HIDE_RESOURCE',
           path: 'AWS::SNS::Topic.TopicA*'
         }
       ],
-      'Hide only SNS Changes for TopicA - Property level': [
+      'Hide only TopicA changes - Property level': [
         {
           name: 'hide-topica-property-changes',
           type: 'HIDE_PROPERTIES',
@@ -278,11 +278,20 @@ describe('diff.ts', () => {
           path: 'AWS::SNS::Topic.*.DisplayName'
         }
       ],
-      'Changes to all Lambdas with env key1': [
+
+      'Hide Lambda changes to all Lambdas with env key1': [
         {
           name: 'hide-topics-display-name-changes',
           type: 'HIDE_PROPERTIES',
-          path: 'AWS::Lambda::*.Function.Code.Variables.key1'
+          path: 'AWS::Lambda::Function.*.Environment.Variables.key1'
+        }
+      ],
+
+      'Hide all tag changes': [
+        {
+          name: 'hide-all-tags',
+          type: 'HIDE_PROPERTIES',
+          path: '*.Tags'
         }
       ]
     };
