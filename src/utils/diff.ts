@@ -246,7 +246,7 @@ export function extractStackDiffOutput(
   stackIdName: string,
   cdkDiffOutput: string,
   diffRules: DiffRule[] = []
-): { markdown: string; diffLines: DiffLine[] } {
+): { markdown: string; diffLines: DiffLineOutput[] } {
   const diffLines = extractStackDiffLines(stackIdName, cdkDiffOutput);
   if (!diffLines.length) {
     return { markdown: '', diffLines: [] };
@@ -258,7 +258,7 @@ export function extractStackDiffOutput(
   const diffLinesOutput: DiffLineOutput[] = [];
   let path: string[] = [];
   let lastResource: ResourceDiffLine | undefined = undefined;
-  let lastProperty: PropertyDiffLine | undefined = undefined;
+  let propertyStack: PropertyDiffLine[] = [];
 
   for (let i = 0; i < diffLines.length; i++) {
     const line = diffLines[i];
@@ -270,25 +270,35 @@ export function extractStackDiffOutput(
       if (diffLine.id) {
         path.push(diffLine.id);
       }
-      lastProperty = undefined;
+      propertyStack = [];
       diffLine.diffRulesApplied = [];
       lastResource = diffLine;
     } else if (diffLine.type === 'Property') {
-      if (!lastProperty) {
-        path.push(diffLine.name);
-      } else if (lastProperty && diffLine.depth > lastProperty.depth) {
-        path.push(diffLine.name);
-      } else if (lastProperty && diffLine.depth < lastProperty.depth) {
+      // Manage the property stack based on depth
+      while (propertyStack.length > 0 && propertyStack[propertyStack.length - 1].depth >= diffLine.depth) {
+        propertyStack.pop();
         path.pop();
-        path.push(diffLine.name);
       }
-      lastProperty = diffLine;
+      propertyStack.push(diffLine);
+      path.push(diffLine.name);
     } else if (diffLine.type === 'Value') {
-      if (diffLine.lineContent.includes('Removed: .key2')) {
-        console.log('debug');
-      }
-      if (lastProperty && diffLine.depth === lastProperty.depth) {
-        path.pop();
+      // For value lines that represent property removals/additions, we need to adjust the path
+      if (diffLine.lineContent.includes('Removed: .') || diffLine.lineContent.includes('Added: .')) {
+        // These lines represent property removals/additions at the parent level
+        // So we need to remove the last property from the path, but only temporarily for this line
+        // We'll create a temporary path for this line without modifying the main path state
+        const tempPath = [...path];
+        if (propertyStack.length > 0) {
+          tempPath.pop();
+        }
+        // Use the temporary path for this line
+        diffLinesOutput.push({
+          ...diffLine,
+          path: tempPath.join('.'),
+          resourceSign: lastResource!.sign,
+          show: true
+        });
+        continue; // Skip the normal path assignment below
       }
     }
 

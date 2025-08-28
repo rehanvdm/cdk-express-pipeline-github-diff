@@ -1,6 +1,7 @@
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import {
   DiffLine,
+  DiffLineOutput,
   DiffResult,
   DiffRule,
   extractStackDiffOutput,
@@ -190,7 +191,7 @@ describe('diff.ts', () => {
 
     // GH Action 1
     const testDiffRes = await generateTemplateDiffs(testAssembly, cdkOut);
-    const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput);
+    const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput, []);
     if (stackDiffs) {
       await saveDiffs(stackDiffs, cdkOut);
     }
@@ -216,7 +217,7 @@ describe('diff.ts', () => {
     for (const [stackIdName, templateDiff] of Object.entries(testDiffRes.templateDiffs)) {
       const stackId = stackIdName.split(' ')[0];
       result[stackId] = extractStackDiffOutput(stackIdName, testDiffRes.cdkDiffOutput)
-        .diffLines.map((l: DiffLine) => l.path + ' >> ' + l.lineContent)
+        .diffLines.map((l: DiffLineOutput) => l.path + ' >> ' + l.lineContent)
         .join('\n');
     }
 
@@ -288,8 +289,10 @@ describe('diff.ts', () => {
 
     for (const [name, rules] of Object.entries(tests)) {
       const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput, rules);
-      const markdown = generateMarkdown(shortHandOrder, stackDiffs);
-      expect(markdown).toMatchSnapshot(name);
+      if (stackDiffs) {
+        const markdown = generateMarkdown(shortHandOrder, stackDiffs);
+        expect(markdown).toMatchSnapshot(name);
+      }
     }
   });
 });
