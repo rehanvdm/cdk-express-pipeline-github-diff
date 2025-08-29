@@ -43,11 +43,19 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
   const stackB = new ExpressStack(app, 'stack-b', wave1stage2, {
     stackName: 'StackB'
   });
+  const stackD = new ExpressStack(app, 'stack-d', wave1stage2, {
+    stackName: 'StackD'
+  });
 
   const wave2 = expressPipeline.addWave('wave2');
   const wave2stage1 = wave2.addStage('stage1');
   const stackC = new ExpressStack(app, 'stack-c', wave2stage1, {
     stackName: 'StackC'
+  });
+
+  // Tst no change
+  new sns.Topic(stackD, 'TopicD', {
+    displayName: 'Topic D'
   });
 
   if (!opts?.withChange) {

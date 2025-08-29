@@ -387619,6 +387619,8 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
         }
       }
     }
+    if (!lastResource)
+      continue;
     diffLinesOutput.push({
       ...diffLine,
       path: path3.join("."),
@@ -387665,8 +387667,12 @@ function parseDiffLine(line, nextLie) {
     return resourceLine;
   } else {
     const indexOfBracket = line.indexOf("] ");
-    const splits = line.slice(indexOfBracket + 2).split(" ");
-    const sign = line[indexOfBracket - 1];
+    let splits = [];
+    let sign = void 0;
+    if (indexOfBracket !== -1) {
+      splits = line.slice(indexOfBracket + 2).split(" ");
+      sign = line[indexOfBracket - 1];
+    }
     const depth = Math.max(line.indexOf("\u251C\u2500"), line.indexOf("\u2514\u2500"));
     const nextDepth = Math.max(nextLie.indexOf("\u251C\u2500"), nextLie.indexOf("\u2514\u2500"));
     if (splits.length >= 1) {

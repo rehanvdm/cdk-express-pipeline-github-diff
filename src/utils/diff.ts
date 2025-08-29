@@ -345,10 +345,12 @@ export function extractStackDiffOutput(
       }
     }
 
+    if (!lastResource) continue;
+
     diffLinesOutput.push({
       ...diffLine,
       path: path.join('.'),
-      resourceSign: lastResource!.sign,
+      resourceSign: lastResource.sign,
       show
     });
   }
@@ -395,8 +397,12 @@ function parseDiffLine(line: string, nextLie: string): DiffLine {
     return resourceLine;
   } else {
     const indexOfBracket = line.indexOf('] ');
-    const splits = line.slice(indexOfBracket + 2).split(' ');
-    const sign = line[indexOfBracket - 1] as DiffSign;
+    let splits: string[] = [];
+    let sign: DiffSign | undefined = undefined;
+    if (indexOfBracket !== -1) {
+      splits = line.slice(indexOfBracket + 2).split(' ');
+      sign = line[indexOfBracket - 1] as DiffSign;
+    }
 
     // Find the last indentation on the current line and the next line
     const depth = Math.max(line.indexOf('├─'), line.indexOf('└─'));
@@ -410,7 +416,7 @@ function parseDiffLine(line: string, nextLie: string): DiffLine {
           name: splits[0],
           lineContent: line,
           depth,
-          sign
+          sign: sign as DiffSign
         };
         if (splits[0].startsWith('.') && splits[0].endsWith(':')) {
           propertyLine.name = splits[0].slice(1, -1);
