@@ -355,7 +355,7 @@ export function extractStackDiffOutput(
 
   const markdown = [];
   if (resourceRulesApplied.length) {
-    markdown.push(`       {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
+    markdown.push(`!      {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
   }
   for (const line of diffLinesOutput) {
     if (!line.show) {

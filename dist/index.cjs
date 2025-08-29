@@ -387628,7 +387628,7 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
   }
   const markdown = [];
   if (resourceRulesApplied.length) {
-    markdown.push(`       {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
+    markdown.push(`!      {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
   }
   for (const line of diffLinesOutput) {
     if (!line.show) {
@@ -390511,10 +390511,8 @@ async function outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash) {
     const jobRunUrl = `${github.context.serverUrl}/${github.context.repo.owner}/${github.context.repo.repo}/actions/runs/${github.context.runId}/job/${jobId}`;
     jobText = ` , see [job log](${jobRunUrl})`;
   }
-  const summary2 = `\`\`\`
-  ${cdkSummaryDiff}
-  \`\`\`;
-  
+  const summary2 = "```\n" + cdkSummaryDiff + `
+\`\`\`
 *Generated At: ${now} from commit: ${gitHash}${jobText}*`;
   await core2.summary.addRaw(summary2).write({ overwrite: true });
 }
