@@ -36,6 +36,322 @@ The generate mode analyzes your CDK Express Pipeline assembly and creates detail
 - `cloud-assembly-directory`: Directory containing the CDK Cloud Assembly (optional, default: `cdk.out`)
 - `stack-selectors`: Comma-separated stack selectors or patterns to diff (optional, default: `**` for all stacks)
 - `job-name`: Name of the job, used to link to action/job logs in summaries (optional)
+- `diff-rules`: An array of objects indicating rules to apply to the diff output on the PR description (optional)
+  Example Usage:
+
+  ```yaml
+  diff-rules: |
+    - name: hide-all-sns-resources
+      type: HIDE_RESOURCE
+      path: AWS::SNS::Topic.*
+    - name: hide-all-sns-property-changes
+      type: HIDE_PROPERTIES
+      path: AWS::SNS::Topic.*
+  ```
+
+  Properties:
+  - `name`: The name of the rule shown next to the hidden resource/properties in the diff.
+  - `type`: The type of rule. Options are:
+    - `HIDE_RESOURCE`: Hides the entire resource diff if any property changes match the path
+    - `HIDE_PROPERTIES`: Hides only the property changes that match the path, but shows the resource and other property
+      changes
+  - `path`: A glob pattern to match on the path with format:
+    `ResourceName.ResourceId.Property.NestedProperty.NestedProperty....` If a ResourceId has / in its name, it will be
+    replaced with \_ to avoid issues with glob matching
+
+#### Diff Rules Examples
+
+##### Hide all SNS Topic resources
+
+This rule hides all SNS Topic resources from the diff output if they have changes.
+
+```yaml
+diff-rules: |
+  - name: hide-all-sns-resources
+    type: HIDE_RESOURCE
+    path: AWS::SNS::Topic.*
+```
+
+Output Before:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746
+!       └─ [~] DisplayName
+!           ├─ [-] Topic A
+!           └─ [+] Topic A Change
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+!      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace
+!       ├─ [~] DisplayName
+!       │   ├─ [-] Topic R
+!       │   └─ [+] Topic R can change
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+```
+
+Output After:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+       {Applied Resource Diff Rules: hide-all-sns-resources(2)}
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+```
+
+##### Hide all SNS Topic resources property changes
+
+This rule hides all property changes for SNS Topic resources, but still shows the resource.
+
+```yaml
+diff-rules: |
+  - name: hide-all-sns-property-changes
+    type: HIDE_PROPERTIES
+    path: AWS::SNS::Topic.*
+```
+
+<details>
+<summary> Output Before & After </summary>
+
+Output Before:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746
+!       └─ [~] DisplayName
+!           ├─ [-] Topic A
+!           └─ [+] Topic A Change
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+!      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace
+!       ├─ [~] DisplayName
+!       │   ├─ [-] Topic R
+!       │   └─ [+] Topic R can change
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+```
+
+Output After:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746 {Applied Property Diff Rules: hide-all-sns-property-changes(3)}
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+!      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace {Applied Property Diff Rules: hide-all-sns-property-changes(6)}
+```
+
+</details>
+
+#### Hide all property changes for the SNS Topic with id `TopicR`
+
+This rule hides all property changes for a `TopicR`.
+
+```yaml
+diff-rules: |
+  - name: hide-topic-r-property-changes
+    type: HIDE_PROPERTIES
+    path: AWS::SNS::Topic.TopicR.*
+```
+
+<details>
+<summary> Output Before & After </summary>
+
+Output Before:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746
+!       └─ [~] DisplayName
+!           ├─ [-] Topic A
+!           └─ [+] Topic A Change
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+!      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace
+!       ├─ [~] DisplayName
+!       │   ├─ [-] Topic R
+!       │   └─ [+] Topic R can change
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+```
+
+Output After:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746
+!       └─ [~] DisplayName
+!           ├─ [-] Topic A
+!           └─ [+] Topic A Change
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+!      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace {Applied Property Diff Rules: hide-topic-r-property-changes(6)}
+```
+
+</details>
+
+#### Hide all SNS Topic Display Name changes
+
+This rule hides all Display Name property changes for all SNS Topic resources.
+
+```yaml
+diff-rules: |
+  - name: hide-sns-display-name-changes
+    type: HIDE_PROPERTIES
+    path: AWS::SNS::Topic.*.DisplayName
+```
+
+<details>
+<summary> Output Before & After </summary>
+
+Output Before:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746
+!       └─ [~] DisplayName
+!           ├─ [-] Topic A
+!           └─ [+] Topic A Change
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+!      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace
+!       ├─ [~] DisplayName
+!       │   ├─ [-] Topic R
+!       │   └─ [+] Topic R can change
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+```
+
+Output After:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746 {Applied Property Diff Rules: hide-sns-display-name-changes(3)}
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+!      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace {Applied Property Diff Rules: hide-sns-display-name-changes(3)}
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+```
+
+</details>
+
+#### Hide all Lambda Function Environment changes for `key1`
+
+This rule hides the `key1` environment variable changes for all Lambda Functions.
+
+```yaml
+diff-rules: |
+  - name: hide-env-key1-changes
+    type: HIDE_PROPERTIES
+    path: AWS::Lambda::Function.*.Environment.Variables.key1
+```
+
+<details>
+<summary> Output Before & After </summary>
+
+Output Before:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      [~] AWS::Lambda::Function Function Function76856677
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] CHANGED CODE
+!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       ├─ [~] Environment
+!       │   └─ [~] .Variables:
+!       │       ├─ [~] .key1:
+!       │       │   ├─ [-] value1
+!       │       │   └─ [+] value1-change
+!       │       ├─ [-] Removed: .key2
+!       │       └─ [+] Added: .key3
+```
+
+Output After:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      [~] AWS::Lambda::Function Function Function76856677 {Applied Property Diff Rules: hide-env-key1-changes(3)}
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] CHANGED CODE
+!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       ├─ [~] Environment
+!       │   └─ [~] .Variables:
+!       │       ├─ [-] Removed: .key2
+!       │       └─ [+] Added: .key3
+```
+
+</details>
+
+#### Hide all tag changes for all resources
+
+This rule hides all tag changes for all resources.
+
+```yaml
+diff-rules: |
+  - name: hide-all-tag-changes
+    type: HIDE_PROPERTIES
+    path: *.Tags
+```
+
+<details>
+<summary> Output Before & After </summary>
+
+Output Before:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      [~] AWS::EC2::VPC VPC VPCB9E5F0B4
+!       └─ [~] Tags
+!           └─ @@ -1,6 +1,6 @@
+!              [ ] [
+!              [ ]   {
+!              [ ]     "Key": "Name",
+!              [-]     "Value": "wave2_stage1_stack-c/VPC"
+!              [+]     "Value": "VPC Changed"
+!              [ ]   }
+!              [ ] ]
+```
+
+Output After:
+
+```
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      [~] AWS::EC2::VPC VPC VPCB9E5F0B4 {Applied Property Diff Rules: hide-all-tag-changes(9)}
+```
+
+</details>
 
 ### Print Mode (`mode: 'print'`)
 
@@ -52,9 +368,16 @@ The print mode retrieves cached diff data and updates the pull request descripti
 - `github-token`: GitHub token for API access and caching that needs `pull-requests: write` permission (required)
 - `cloud-assembly-directory`: Directory containing the CDK Cloud Assembly (optional, default: `cdk.out`)
 - `job-name`: Name of the job, used to link to action/job logs in summaries (optional)
-- `cloud-assemblies`: List of cloud assemblies to print diffs from (optional). Do not specify `cloud-assembly-directory`
-  when using this property as it is the "array" version of `cloud-assembly-directory` and allows you to specify multiple
-  assemblies and custom headers.
+- `cloud-assemblies`: An array of objects representing cloud assemblies to print diffs from (optional). Do not specify
+  `cloud-assembly-directory` when using this property as it is the "array" version of `cloud-assembly-directory` and
+  allows you to specify multiple assemblies and custom headers. Example Usage:
+  ```yaml
+  cloud-assemblies: |
+    - header: CDK Diff Development
+      directory: cdk.out/dev
+    - header: CDK Diff Production
+      directory: cdk.out/prod
+  ```
 
 ### Basic - Single Job Diff
 

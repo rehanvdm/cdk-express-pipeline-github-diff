@@ -1,6 +1,13 @@
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
-//@ts-expect-error TS/JS import issue but works
-import { generateDiffs, generateMarkdown, getSavedDiffs, saveDiffs } from '../src/utils/diff';
+import {
+  DiffLineOutput,
+  DiffRule,
+  extractStackDiffOutput,
+  generateDiffs,
+  generateMarkdown,
+  getSavedDiffs,
+  saveDiffs
+} from '../src/utils/diff';
 import { DiffMethod, ExpandStackSelection, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import * as cdk from 'aws-cdk-lib';
 import * as sns from 'aws-cdk-lib/aws-sns';
@@ -8,8 +15,8 @@ import { CloudAssembly } from 'aws-cdk-lib/cx-api';
 import { CdkExpressPipeline, CdkExpressPipelineAssembly, ExpressStack } from 'cdk-express-pipeline';
 import path from 'node:path';
 import * as fs from 'node:fs';
-//@ts-expect-error TS/JS import issue but works
 import { CDK_EXPRESS_PIPELINE_JSON_FILE } from '../src/utils/shared';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 
 type AssemblyDiff = {
   assembly: CloudAssembly;
@@ -36,11 +43,19 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
   const stackB = new ExpressStack(app, 'stack-b', wave1stage2, {
     stackName: 'StackB'
   });
+  const stackD = new ExpressStack(app, 'stack-d', wave1stage2, {
+    stackName: 'StackD'
+  });
 
   const wave2 = expressPipeline.addWave('wave2');
   const wave2stage1 = wave2.addStage('stage1');
   const stackC = new ExpressStack(app, 'stack-c', wave2stage1, {
     stackName: 'StackC'
+  });
+
+  // Tst no change
+  new sns.Topic(stackD, 'TopicD', {
+    displayName: 'Topic D'
   });
 
   if (!opts?.withChange) {
@@ -52,7 +67,35 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
     });
     new sns.Topic(stackB, 'TopicR', {
       topicName: 'Topic R',
-      displayName: 'Topic R'
+      displayName: 'Topic R',
+      loggingConfigs: [
+        {
+          protocol: sns.LoggingProtocol.HTTP
+        }
+      ]
+    });
+
+    const vpc = new cdk.aws_ec2.Vpc(stackC, 'VPC');
+    const sg1 = new cdk.aws_ec2.SecurityGroup(stackC, 'SG1', {
+      vpc
+    });
+    sg1.addIngressRule(cdk.aws_ec2.Peer.anyIpv4(), cdk.aws_ec2.Port.tcp(443), 'Allow HTTPS traffic');
+    new lambda.Function(stackC, 'Function', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline('CHANGED CODE'),
+      environment: {
+        key1: 'value1',
+        key2: 'value2'
+      },
+      memorySize: 256,
+      vpc: vpc,
+      securityGroups: [
+        sg1,
+        new cdk.aws_ec2.SecurityGroup(stackC, 'SG2', {
+          vpc
+        })
+      ]
     });
   } else {
     new sns.Topic(stackA, 'TopicA', {
@@ -63,7 +106,29 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
     });
     new sns.Topic(stackB, 'TopicR', {
       topicName: 'Topic R should not change',
-      displayName: 'Topic R can change'
+      displayName: 'Topic R can change',
+      enforceSSL: true
+    });
+
+    const vpc = new cdk.aws_ec2.Vpc(stackC, 'VPC', {
+      vpcName: 'VPC Changed',
+      maxAzs: 2
+    });
+    const sg1 = new cdk.aws_ec2.SecurityGroup(stackC, 'SG1', {
+      vpc
+    });
+    sg1.addIngressRule(cdk.aws_ec2.Peer.anyIpv4(), cdk.aws_ec2.Port.tcp(443), 'Allow HTTPS traffic');
+    new lambda.Function(stackC, 'Function', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline('exports.handler = async function(event, context) { return "Hello World"; };'),
+      environment: {
+        key1: 'value1-change',
+        key3: 'value3'
+      },
+      memorySize: 512,
+      vpc: vpc,
+      securityGroups: [sg1]
     });
   }
 
@@ -76,21 +141,23 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
 }
 
 async function generateTemplateDiffs(diffFunc: (opts?: AssemblyDiffFuncArgs) => AssemblyDiff, cdkOutChange: string) {
-  // const cdkConsole = '';
-  const cdkToolkit = new Toolkit();
-  //   {
-  //   ioHost: {
-  //     notify: async function (msg) {
-  //       console.log(msg.message);
-  //       cdkConsole += stripAnsiCodes(msg.message) + '\n';
-  //     },
-  //     requestResponse: async function (msg) {
-  //       console.log(msg.message);
-  //       cdkConsole += stripAnsiCodes(msg.message) + '\n';
-  //       return msg.defaultResponse;
-  //     }
-  //   }
-  // }
+  let cdkDiffOutput = '';
+  const cdkToolkit = new Toolkit({
+    color: false,
+    ioHost: {
+      notify: async function (msg) {
+        if (msg.level === 'result') {
+          cdkDiffOutput += msg.message + '\n';
+        }
+      },
+      requestResponse: async function (msg) {
+        if (msg.level === 'result') {
+          cdkDiffOutput += msg.message + '\n';
+        }
+        return msg.defaultResponse;
+      }
+    }
+  });
 
   if (fs.existsSync(cdkOutChange)) {
     fs.rmSync(cdkOutChange, { recursive: true, force: true });
@@ -121,17 +188,28 @@ async function generateTemplateDiffs(diffFunc: (opts?: AssemblyDiffFuncArgs) => 
   // console.log('cdkConsole');
   // console.log(cdkConsole);
 
-  return templateDiffs;
+  //Because we are doing a for loop and seperate diff for each stack, we get the line:
+  // ✨ Number of stacks with differences: 1
+  // at the end of each stack diff, so we need to remove those lines and add a single one at the end
+  cdkDiffOutput =
+    cdkDiffOutput
+      .split('\n')
+      .filter((line) => !line.startsWith('✨ Number of stacks with differences:'))
+      .join('\n') + `✨ Number of stacks with differences: ${Object.keys(templateDiffs).length}`;
+
+  return { templateDiffs, cdkDiffOutput };
 }
 
 describe('diff.ts', () => {
-  it('test complex diff markdown', async () => {
+  it('test complex diff markdown - no diff rules', async () => {
     const cdkOut = path.join(__dirname, 'fixtures', 'cdk.out', 'testAssembly');
 
     // GH Action 1
-    const templateDiffs = await generateTemplateDiffs(testAssembly, cdkOut);
-    const stackDiffs = await generateDiffs(templateDiffs);
-    await saveDiffs(stackDiffs, cdkOut);
+    const testDiffRes = await generateTemplateDiffs(testAssembly, cdkOut);
+    const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput, []);
+    if (stackDiffs) {
+      await saveDiffs(stackDiffs, cdkOut);
+    }
 
     // GH Action 2
     const allStackDiffs = getSavedDiffs(cdkOut);
@@ -144,5 +222,113 @@ describe('diff.ts', () => {
     //fs.writeFileSync('__tests__/diff-output-markdown.md', result);
 
     expect(markdown).toMatchSnapshot();
+  });
+
+  it('test paths', async () => {
+    const cdkOut = path.join(__dirname, 'fixtures', 'cdk.out', 'testAssembly');
+    const testDiffRes = await generateTemplateDiffs(testAssembly, cdkOut);
+
+    const result: Record<string, string> = {};
+    for (const [stackIdName] of Object.entries(testDiffRes.templateDiffs)) {
+      const stackId = stackIdName.split(' ')[0];
+      result[stackId] = extractStackDiffOutput(stackIdName, testDiffRes.cdkDiffOutput)
+        .diffLines.map((l: DiffLineOutput) => l.path + ' >> ' + l.lineContent)
+        .join('\n');
+    }
+
+    expect(testDiffRes.cdkDiffOutput).toMatchSnapshot();
+    expect(result).toMatchSnapshot();
+  });
+
+  it('test complex diff markdown - diff rules', async () => {
+    const cdkOut = path.join(__dirname, 'fixtures', 'cdk.out', 'testAssembly');
+    const testDiffRes = await generateTemplateDiffs(testAssembly, cdkOut);
+
+    const shortHandOrder: CdkExpressPipelineAssembly = JSON.parse(
+      fs.readFileSync(path.join(cdkOut, CDK_EXPRESS_PIPELINE_JSON_FILE), 'utf-8')
+    );
+
+    const tests: Record<string, DiffRule[]> = {
+      'Hide all SNS Topics - Resource level': [
+        {
+          name: 'hide-all-sns-resources',
+          type: 'HIDE_RESOURCE',
+          path: 'AWS::SNS::Topic.*'
+        }
+      ],
+      'Hide all SNS Topic Changes - Property level': [
+        {
+          name: 'hide-all-sns-property-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*'
+        }
+      ],
+
+      'Hide only TopicA - Resource level': [
+        {
+          name: 'hide-all-topica-resources',
+          type: 'HIDE_RESOURCE',
+          path: 'AWS::SNS::Topic.TopicA*'
+        }
+      ],
+      'Hide only TopicA changes - Property level': [
+        {
+          name: 'hide-topica-property-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.TopicA*'
+        }
+      ],
+
+      'Hide all SNS Topics that have Display Name changes': [
+        {
+          name: 'hide-topics-with-display-name-changes',
+          type: 'HIDE_RESOURCE',
+          path: 'AWS::SNS::Topic.*.DisplayName'
+        }
+      ],
+      'Hide all SNS Topic Display Name changes': [
+        {
+          name: 'hide-topics-display-name-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*.DisplayName'
+        }
+      ],
+
+      'Hide Lambda changes to all Lambdas with env key1': [
+        {
+          name: 'hide-env-key1-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::Lambda::Function.*.Environment.Variables.key1'
+        }
+      ],
+
+      'Hide all tag changes': [
+        {
+          name: 'hide-all-tag-changes',
+          type: 'HIDE_PROPERTIES',
+          path: '*.Tags'
+        }
+      ],
+
+      'Multiple rules': [
+        {
+          name: 'hide-topics-display-name-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*.DisplayName'
+        },
+        {
+          name: 'hide-topics-topic-name-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*.TopicName'
+        }
+      ]
+    };
+
+    for (const [name, rules] of Object.entries(tests)) {
+      const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput, rules);
+      expect(stackDiffs).toBeDefined();
+      const markdown = generateMarkdown(shortHandOrder, stackDiffs);
+      expect(markdown).toMatchSnapshot(name);
+    }
   });
 });

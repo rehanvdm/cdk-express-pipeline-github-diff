@@ -3,15 +3,37 @@ import * as github from '@actions/github';
 import { PullRequestEvent } from '@octokit/webhooks-definitions/schema.js';
 import { DiffMethod, ExpandStackSelection, IoMessage, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import { getNowFormated } from '../utils/output.js';
-import { generateDiffs, getDiffsDir, saveDiffs } from '../utils/diff.js';
+import { DiffRule, generateDiffs, getDiffsDir, saveDiffs } from '../utils/diff.js';
 import * as cache from '@actions/cache';
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey } from '../utils/shared.js';
+import * as jsYaml from 'js-yaml';
 
 export async function generate() {
   const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: false }) || 'cdk.out';
   const githubToken = core.getInput('github-token', { required: true });
   const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
+
+  const diffRulesProp = core.getInput('diff-rules', { required: false }) || '[]';
+  const diffRulesParsed = jsYaml.load(diffRulesProp);
+  if (!Array.isArray(diffRulesParsed)) {
+    core.setFailed('The "diff-rules" input must be a YAML array.');
+    return;
+  }
+
+  const diffRules: DiffRule[] = [];
+  for (const rule of diffRulesParsed) {
+    if (typeof rule !== 'object' || !rule.name || !rule.type || !rule.path) {
+      core.setFailed('Each item in "diff-rules" must have "name", "type" and "path" properties.');
+      return;
+    }
+    diffRules.push({
+      name: rule.name,
+      type: rule.type,
+      path: rule.path
+    });
+  }
+
   let gitHash: string;
   if (github.context.eventName === 'pull_request') {
     const pushPayload = github.context.payload as PullRequestEvent;
@@ -23,7 +45,7 @@ export async function generate() {
   const jobName = core.getInput('job-name', { required: false }) || github.context.job;
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
   await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
-  await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory);
+  await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory, cdkSummaryDiff, diffRules);
 }
 
 function printCdkIoToGitHub(msg: IoMessage<unknown>): void {
@@ -101,9 +123,11 @@ async function diff(stackSelectors: string, cloudAssemblyDirectory: string) {
 async function generateJsonDiffsAndCache(
   stackSelectors: string,
   templateDiffs: { [p: string]: TemplateDiff },
-  cloudAssemblyDirectory: string
+  cloudAssemblyDirectory: string,
+  cdkSummaryDiff: string,
+  diffRules: DiffRule[]
 ) {
-  const stackDiffs = generateDiffs(templateDiffs);
+  const stackDiffs = generateDiffs(templateDiffs, cdkSummaryDiff, diffRules);
   if (!stackDiffs) {
     core.info('No changes detected in any stacks');
     return;
@@ -149,8 +173,6 @@ async function outputSummary(githubToken: string, jobName: string, cdkSummaryDif
     jobText = ` , see [job log](${jobRunUrl})`;
   }
 
-  const summary = `\`\`\`${cdkSummaryDiff}\`\`\`
-  
-*Generated At: ${now} from commit: ${gitHash}${jobText}*`;
+  const summary = '```\n' + cdkSummaryDiff + '\n```\n' + `*Generated At: ${now} from commit: ${gitHash}${jobText}*`;
   await core.summary.addRaw(summary).write({ overwrite: true });
 }
