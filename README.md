@@ -14,6 +14,21 @@ waves, stages and stacks.
 - 📝 **Visual Diff on PR Description**: Updates pull request descriptions with formatted diff output
 - 🔍 **Full output on Action Summary**: Updates action/job run summary with the full diff output for easy access
 
+## Example Outputs
+
+### PR Description output
+
+The action will append a formatted diff to the pull request description, it will never overwrite the existing
+description. Here's an example of what it looks like:
+
+![img.png](docs/imgs/pr_description.png)
+
+### Action Summary output
+
+The action will also update the action/job summary with the full CDK diff output without any changes:
+
+![img.png](docs/imgs/action_summary.png)
+
 ## Usage
 
 This action operates in two distinct modes: `generate` and `print`. Understanding these modes is essential for setting
@@ -61,7 +76,7 @@ The generate mode analyzes your CDK Express Pipeline assembly and creates detail
 
 #### Diff Rules Examples
 
-##### Hide all SNS Topic resources
+##### HIDE ALL SNS TOPIC RESOURCES
 
 This rule hides all SNS Topic resources from the diff output if they have changes.
 
@@ -74,7 +89,7 @@ diff-rules: |
 
 Output Before:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -95,7 +110,7 @@ Output Before:
 
 Output After:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -104,9 +119,7 @@ Output After:
 +      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
 ```
 
-##### Hide all SNS Topic resources property changes
-
-This rule hides all property changes for SNS Topic resources, but still shows the resource.
+##### HIDE ALL SNS TOPIC PROPERTY CHANGES
 
 ```yaml
 diff-rules: |
@@ -120,7 +133,7 @@ diff-rules: |
 
 Output Before:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -141,7 +154,7 @@ Output Before:
 
 Output After:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -153,9 +166,7 @@ Output After:
 
 </details>
 
-#### Hide all property changes for the SNS Topic with id `TopicR`
-
-This rule hides all property changes for a `TopicR`.
+#### HIDE ALL PROPERTY CHANGES FOR THE SNS TOPIC WITH ID `TopicR`
 
 ```yaml
 diff-rules: |
@@ -169,7 +180,7 @@ diff-rules: |
 
 Output Before:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -190,7 +201,7 @@ Output Before:
 
 Output After:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -205,9 +216,7 @@ Output After:
 
 </details>
 
-#### Hide all SNS Topic Display Name changes
-
-This rule hides all Display Name property changes for all SNS Topic resources.
+#### HIDE ALL SNS TOPIC `DisplayName` CHANGES
 
 ```yaml
 diff-rules: |
@@ -221,7 +230,7 @@ diff-rules: |
 
 Output Before:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -242,7 +251,7 @@ Output Before:
 
 Output After:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -257,9 +266,7 @@ Output After:
 
 </details>
 
-#### Hide all Lambda Function Environment changes for `key1`
-
-This rule hides the `key1` environment variable changes for all Lambda Functions.
+#### HIDE ALL LAMBDA FUNCTION `Environment` CHANGES for `key1`
 
 ```yaml
 diff-rules: |
@@ -273,7 +280,7 @@ diff-rules: |
 
 Output Before:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -293,7 +300,7 @@ Output Before:
 
 Output After:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -310,9 +317,7 @@ Output After:
 
 </details>
 
-#### Hide all tag changes for all resources
-
-This rule hides all tag changes for all resources.
+#### HIDE ALL TAG CHANGES FOR ALL RESOURCES
 
 ```yaml
 diff-rules: |
@@ -326,7 +331,7 @@ diff-rules: |
 
 Output Before:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -344,7 +349,7 @@ Output Before:
 
 Output After:
 
-```
+```diff
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
@@ -573,21 +578,6 @@ Will produce the following:
 ![advance_pr_description.png](docs/imgs/advance_pr_description.png)
 
 </details>
-
-## Example Outputs
-
-### PR Description output
-
-The action will append a formatted diff to the pull request description, it will never overwrite the existing
-description. Here's an example of what it looks like:
-
-![img.png](docs/imgs/pr_description.png)
-
-### Action Summary output
-
-The action will also update the action/job summary with the full CDK diff output without any changes:
-
-![img.png](docs/imgs/action_summary.png)
 
 ## How It Works
 
