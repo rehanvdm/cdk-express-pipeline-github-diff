@@ -361,7 +361,10 @@ export function extractStackDiffOutput(
     if (!line.show) {
       continue;
     }
-    const gitDiffSign = line.resourceSign === '~' ? '!' : line.sign;
+    let gitDiffSign = line.resourceSign === '~' ? '!' : line.sign;
+    if (line.lineContent.includes('::') && line.lineContent.endsWith(' replace')) {
+      gitDiffSign = '-';
+    }
     let lineContent = `${gitDiffSign}      ${line.lineContent}`;
     if (line.type === 'Resource' && line.diffRulesApplied?.length) {
       lineContent += ` {Applied Property Diff Rules: ${diffRulesToString(line.diffRulesApplied)}}`;
