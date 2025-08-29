@@ -184,14 +184,13 @@ function generateStackDiff(
 
 function extractStackDiffLines(stackIdName: string, cdkDiffOutput: string) {
   const lines = cdkDiffOutput.split('\n');
-  const stackStartPattern = new RegExp(`^Stack ${stackIdName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 
   let startIndex = -1;
   let endIndex = -1;
 
   // Find the start of this stack's diff output
   for (let i = 0; i < lines.length; i++) {
-    if (stackStartPattern.test(lines[i])) {
+    if (lines[i].startsWith('Stack ' + stackIdName)) {
       startIndex = i;
       break;
     }
@@ -205,7 +204,7 @@ function extractStackDiffLines(stackIdName: string, cdkDiffOutput: string) {
   for (let i = startIndex + 1; i < lines.length; i++) {
     const line = lines[i];
     // Check if this line starts with an emoji (simplified pattern)
-    if (/^[^\s]*[✨]/u.test(line)) {
+    if (lines[i].startsWith('Stack ') || line.startsWith('✨ Number of stacks')) {
       endIndex = i;
       break;
     }
@@ -256,11 +255,6 @@ export function extractStackDiffOutput(
   if (!diffLines.length) {
     return { markdown: '', diffLines: [] };
   }
-
-  console.log('Cdk Diff Output:', cdkDiffOutput);
-
-  console.log('Diff Lines JSON:', JSON.stringify(diffLines, null, 2));
-
   // Top level resources applied to, we need to output it somewhere (for properties we output on the resource line)
   const resourceRulesApplied: DiffRule[] = [];
 
@@ -374,9 +368,6 @@ export function extractStackDiffOutput(
     }
     markdown.push(lineContent);
   }
-
-  console.log('Parsed Diff Lines JSON:', JSON.stringify(diffLinesOutput, null, 2));
-  // console.log('Parsed Diff Lines JSON:', diffLinesOutput.map((l) => l.path + ' >> ' + l.lineContent).join('\n'));
 
   return { markdown: markdown.join('\n'), diffLines: diffLinesOutput };
 }

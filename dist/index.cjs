@@ -387496,11 +387496,10 @@ function generateStackDiff(stackIdName, templateDiff, cdkDiffOutput, diffRules) 
 }
 function extractStackDiffLines(stackIdName, cdkDiffOutput) {
   const lines = cdkDiffOutput.split("\n");
-  const stackStartPattern = new RegExp(`^Stack ${stackIdName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
   let startIndex = -1;
   let endIndex = -1;
   for (let i3 = 0; i3 < lines.length; i3++) {
-    if (stackStartPattern.test(lines[i3])) {
+    if (lines[i3].startsWith("Stack " + stackIdName)) {
       startIndex = i3;
       break;
     }
@@ -387510,7 +387509,7 @@ function extractStackDiffLines(stackIdName, cdkDiffOutput) {
   }
   for (let i3 = startIndex + 1; i3 < lines.length; i3++) {
     const line = lines[i3];
-    if (/^[^\s]*[✨]/u.test(line)) {
+    if (lines[i3].startsWith("Stack ") || line.startsWith("\u2728 Number of stacks")) {
       endIndex = i3;
       break;
     }
@@ -387548,8 +387547,6 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
   if (!diffLines.length) {
     return { markdown: "", diffLines: [] };
   }
-  console.log("Cdk Diff Output:", cdkDiffOutput);
-  console.log("Diff Lines JSON:", JSON.stringify(diffLines, null, 2));
   const resourceRulesApplied = [];
   const diffLinesOutput = [];
   let path3 = [];
@@ -387644,7 +387641,6 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
     }
     markdown.push(lineContent);
   }
-  console.log("Parsed Diff Lines JSON:", JSON.stringify(diffLinesOutput, null, 2));
   return { markdown: markdown.join("\n"), diffLines: diffLinesOutput };
 }
 function parseDiffLine(line, nextLie) {

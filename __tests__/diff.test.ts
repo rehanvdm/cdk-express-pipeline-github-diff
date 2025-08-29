@@ -180,6 +180,15 @@ async function generateTemplateDiffs(diffFunc: (opts?: AssemblyDiffFuncArgs) => 
   // console.log('cdkConsole');
   // console.log(cdkConsole);
 
+  //Because we are doing a for loop and seperate diff for each stack, we get the line:
+  // ✨ Number of stacks with differences: 1
+  // at the end of each stack diff, so we need to remove those lines and add a single one at the end
+  cdkDiffOutput =
+    cdkDiffOutput
+      .split('\n')
+      .filter((line) => !line.startsWith('✨ Number of stacks with differences:'))
+      .join('\n') + `✨ Number of stacks with differences: ${Object.keys(templateDiffs).length}`;
+
   return { templateDiffs, cdkDiffOutput };
 }
 
