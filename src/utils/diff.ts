@@ -265,8 +265,8 @@ export function extractStackDiffOutput(
 
   for (let i = 0; i < diffLines.length; i++) {
     const line = diffLines[i];
-    const nextLie = i + 1 < diffLines.length ? diffLines[i + 1] : '';
-    const diffLine = parseDiffLine(line, nextLie);
+    const nextLine = i + 1 < diffLines.length ? diffLines[i + 1] : '';
+    const diffLine = parseDiffLine(line, nextLine);
 
     if (diffLine.type === 'Resource') {
       path = [diffLine.name];
@@ -321,9 +321,9 @@ export function extractStackDiffOutput(
             }
 
             const resourcePath = diffLinesOutput![indexLastResource].path.split('.').slice(0, 2).join('.');
-            const resourcePropertyIndex = -1;
+            let resourcePropertyIndex = -1;
             do {
-              const resourcePropertyIndex = diffLinesOutput.findIndex((l) => l.path.startsWith(resourcePath) && l.show);
+              resourcePropertyIndex = diffLinesOutput.findIndex((l) => l.path.startsWith(resourcePath) && l.show);
               if (resourcePropertyIndex !== -1) {
                 diffLinesOutput[resourcePropertyIndex].show = false;
                 if (diffLinesOutput[resourcePropertyIndex].type === 'Resource') {
@@ -377,7 +377,7 @@ export function extractStackDiffOutput(
   return { markdown: markdown.join('\n'), diffLines: diffLinesOutput };
 }
 
-function parseDiffLine(line: string, nextLie: string): DiffLine {
+function parseDiffLine(line: string, nextLine: string): DiffLine {
   if (line[0] === '[') {
     const splits = line.split(' ');
     const resourceLine: ResourceDiffLine = {
@@ -406,7 +406,7 @@ function parseDiffLine(line: string, nextLie: string): DiffLine {
 
     // Find the last indentation on the current line and the next line
     const depth = Math.max(line.indexOf('├─'), line.indexOf('└─'));
-    const nextDepth = Math.max(nextLie.indexOf('├─'), nextLie.indexOf('└─'));
+    const nextDepth = Math.max(nextLine.indexOf('├─'), nextLine.indexOf('└─'));
 
     if (splits.length >= 1) {
       // If the next line is more indented, this line is a property name

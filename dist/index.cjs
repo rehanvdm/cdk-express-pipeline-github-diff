@@ -387554,8 +387554,8 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
   let propertyStack = [];
   for (let i3 = 0; i3 < diffLines.length; i3++) {
     const line = diffLines[i3];
-    const nextLie = i3 + 1 < diffLines.length ? diffLines[i3 + 1] : "";
-    const diffLine = parseDiffLine(line, nextLie);
+    const nextLine = i3 + 1 < diffLines.length ? diffLines[i3 + 1] : "";
+    const diffLine = parseDiffLine(line, nextLine);
     if (diffLine.type === "Resource") {
       path3 = [diffLine.name];
       if (diffLine.id) {
@@ -387596,12 +387596,12 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
               continue;
             }
             const resourcePath = diffLinesOutput[indexLastResource].path.split(".").slice(0, 2).join(".");
-            const resourcePropertyIndex = -1;
+            let resourcePropertyIndex = -1;
             do {
-              const resourcePropertyIndex2 = diffLinesOutput.findIndex((l3) => l3.path.startsWith(resourcePath) && l3.show);
-              if (resourcePropertyIndex2 !== -1) {
-                diffLinesOutput[resourcePropertyIndex2].show = false;
-                if (diffLinesOutput[resourcePropertyIndex2].type === "Resource") {
+              resourcePropertyIndex = diffLinesOutput.findIndex((l3) => l3.path.startsWith(resourcePath) && l3.show);
+              if (resourcePropertyIndex !== -1) {
+                diffLinesOutput[resourcePropertyIndex].show = false;
+                if (diffLinesOutput[resourcePropertyIndex].type === "Resource") {
                   resourceRulesApplied.push(rule);
                 }
               }
@@ -387648,7 +387648,7 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
   }
   return { markdown: markdown.join("\n"), diffLines: diffLinesOutput };
 }
-function parseDiffLine(line, nextLie) {
+function parseDiffLine(line, nextLine) {
   if (line[0] === "[") {
     const splits = line.split(" ");
     const resourceLine = {
@@ -387674,7 +387674,7 @@ function parseDiffLine(line, nextLie) {
       sign = line[indexOfBracket - 1];
     }
     const depth = Math.max(line.indexOf("\u251C\u2500"), line.indexOf("\u2514\u2500"));
-    const nextDepth = Math.max(nextLie.indexOf("\u251C\u2500"), nextLie.indexOf("\u2514\u2500"));
+    const nextDepth = Math.max(nextLine.indexOf("\u251C\u2500"), nextLine.indexOf("\u2514\u2500"));
     if (splits.length >= 1) {
       if (nextDepth > depth) {
         const propertyLine = {
