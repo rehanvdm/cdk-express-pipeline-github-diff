@@ -387628,6 +387628,30 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
       show
     });
   }
+  let changesWereMade = true;
+  while (changesWereMade) {
+    changesWereMade = false;
+    for (let i3 = 0; i3 < diffLinesOutput.length; i3++) {
+      const line = diffLinesOutput[i3];
+      if (line.type === "Property" && line.show) {
+        let hasVisibleValues = false;
+        for (let j3 = i3 + 1; j3 < diffLinesOutput.length; j3++) {
+          const valueLine = diffLinesOutput[j3];
+          if (valueLine.type === "Resource" || (valueLine.type === "Property" || valueLine.type === "Value") && valueLine.depth <= line.depth) {
+            break;
+          }
+          if (valueLine.show) {
+            hasVisibleValues = true;
+            break;
+          }
+        }
+        if (!hasVisibleValues) {
+          diffLinesOutput[i3].show = false;
+          changesWereMade = true;
+        }
+      }
+    }
+  }
   const markdown = [];
   if (resourceRulesApplied.length) {
     markdown.push(`!      {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
