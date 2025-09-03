@@ -1,5 +1,88 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
+exports[`diff.ts test complex diff markdown - diff rules: Hide Lambda all code changes 1`] = `
+"\`\`\`diff
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746
+!       └─ [~] DisplayName
+!           ├─ [-] Topic A
+!           └─ [+] Topic A Change
+  🏗 wave1stage2
+    📦 StackB (wave1_wave1stage2_stack-b)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+-      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace
+!       ├─ [-] DeliveryStatusLogging
+!       │   └─ [{"Protocol":"http/s"}]
+!       ├─ [~] DisplayName
+!       │   ├─ [-] Topic R
+!       │   └─ [+] Topic R can change
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+    📦 StackD (wave1_wave1stage2_stack-d)
+🌊 wave2
+  🏗 stage1
+    📦 StackC (wave2_stage1_stack-c)
+-      [-] AWS::EC2::SecurityGroup SG20CE3219C destroy
++      [+] AWS::SNS::Topic TopicC TopicCB48CAADF
+!      [~] AWS::EC2::VPC VPC VPCB9E5F0B4
+!       └─ [~] Tags
+!           └─ @@ -1,6 +1,6 @@
+!              [ ] [
+!              [ ]   {
+!              [ ]     "Key": "Name",
+!              [-]     "Value": "wave2_stage1_stack-c/VPC"
+!              [+]     "Value": "VPC Changed"
+!              [ ]   }
+!              [ ] ]
+!      [~] AWS::EC2::InternetGateway VPC/IGW VPCIGWB7E252D3
+!       └─ [~] Tags
+!           └─ @@ -1,6 +1,6 @@
+!              [ ] [
+!              [ ]   {
+!              [ ]     "Key": "Name",
+!              [-]     "Value": "wave2_stage1_stack-c/VPC"
+!              [+]     "Value": "VPC Changed"
+!              [ ]   }
+!              [ ] ]
+!      [~] AWS::Lambda::Function Function Function76856677 {Applied Property Diff Rules: hide-code-changes(3)}
+!       ├─ [~] Environment
+!       │   └─ [~] .Variables:
+!       │       ├─ [~] .key1:
+!       │       │   ├─ [-] value1
+!       │       │   └─ [+] value1-change
+!       │       ├─ [-] Removed: .key2
+!       │       └─ [+] Added: .key3
+!       ├─ [~] MemorySize
+!       │   ├─ [-] 256
+!       │   └─ [+] 512
+!       └─ [~] VpcConfig
+!           └─ [~] .SecurityGroupIds:
+!               └─ @@ -4,11 +4,5 @@
+!                  [ ]       "SG1BA065B6E",
+!                  [ ]       "GroupId"
+!                  [ ]     ]
+!                  [-]   },
+!                  [-]   {
+!                  [-]     "Fn::GetAtt": [
+!                  [-]       "SG20CE3219C",
+!                  [-]       "GroupId"
+!                  [-]     ]
+!                  [ ]   }
+!                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A {Applied Property Diff Rules: hide-code-changes(3)}
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
+\`\`\`
+"
+`;
+
 exports[`diff.ts test complex diff markdown - diff rules: Hide Lambda changes to all Lambdas with env key1 1`] = `
 "\`\`\`diff
 🌊 wave1
@@ -51,8 +134,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide Lambda changes to
 !      [~] AWS::Lambda::Function Function Function76856677 {Applied Property Diff Rules: hide-env-key1-changes(3)}
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [-] Removed: .key2
@@ -74,6 +157,94 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide Lambda changes to
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A {Applied Property Diff Rules: hide-env-key1-changes(3)}
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+\`\`\`
+"
+`;
+
+exports[`diff.ts test complex diff markdown - diff rules: Hide all Lambda code changes 1`] = `
+"\`\`\`diff
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      [~] AWS::SNS::Topic TopicA TopicA1C813746
+!       └─ [~] DisplayName
+!           ├─ [-] Topic A
+!           └─ [+] Topic A Change
+  🏗 wave1stage2
+    📦 StackB (wave1_wave1stage2_stack-b)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+-      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace
+!       ├─ [-] DeliveryStatusLogging
+!       │   └─ [{"Protocol":"http/s"}]
+!       ├─ [~] DisplayName
+!       │   ├─ [-] Topic R
+!       │   └─ [+] Topic R can change
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+    📦 StackD (wave1_wave1stage2_stack-d)
+🌊 wave2
+  🏗 stage1
+    📦 StackC (wave2_stage1_stack-c)
+-      [-] AWS::EC2::SecurityGroup SG20CE3219C destroy
++      [+] AWS::SNS::Topic TopicC TopicCB48CAADF
+!      [~] AWS::EC2::VPC VPC VPCB9E5F0B4
+!       └─ [~] Tags
+!           └─ @@ -1,6 +1,6 @@
+!              [ ] [
+!              [ ]   {
+!              [ ]     "Key": "Name",
+!              [-]     "Value": "wave2_stage1_stack-c/VPC"
+!              [+]     "Value": "VPC Changed"
+!              [ ]   }
+!              [ ] ]
+!      [~] AWS::EC2::InternetGateway VPC/IGW VPCIGWB7E252D3
+!       └─ [~] Tags
+!           └─ @@ -1,6 +1,6 @@
+!              [ ] [
+!              [ ]   {
+!              [ ]     "Key": "Name",
+!              [-]     "Value": "wave2_stage1_stack-c/VPC"
+!              [+]     "Value": "VPC Changed"
+!              [ ]   }
+!              [ ] ]
+!      [~] AWS::Lambda::Function Function Function76856677 {Applied Property Diff Rules: hide-code-changes(3)}
+!       ├─ [~] Environment
+!       │   └─ [~] .Variables:
+!       │       ├─ [~] .key1:
+!       │       │   ├─ [-] value1
+!       │       │   └─ [+] value1-change
+!       │       ├─ [-] Removed: .key2
+!       │       └─ [+] Added: .key3
+!       ├─ [~] MemorySize
+!       │   ├─ [-] 256
+!       │   └─ [+] 512
+!       └─ [~] VpcConfig
+!           └─ [~] .SecurityGroupIds:
+!               └─ @@ -4,11 +4,5 @@
+!                  [ ]       "SG1BA065B6E",
+!                  [ ]       "GroupId"
+!                  [ ]     ]
+!                  [-]   },
+!                  [-]   {
+!                  [-]     "Fn::GetAtt": [
+!                  [-]       "SG20CE3219C",
+!                  [-]       "GroupId"
+!                  [-]     ]
+!                  [ ]   }
+!                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A {Applied Property Diff Rules: hide-code-changes(3)}
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -118,8 +289,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topic Cha
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [~] .key1:
@@ -144,6 +315,16 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topic Cha
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -193,8 +374,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topic Dis
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [~] .key1:
@@ -219,6 +400,16 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topic Dis
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -263,8 +454,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topics - 
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [~] .key1:
@@ -289,6 +480,16 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topics - 
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -336,8 +537,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topics th
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [~] .key1:
@@ -362,6 +563,16 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topics th
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -399,8 +610,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all tag changes 1
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [~] .key1:
@@ -425,6 +636,16 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all tag changes 1
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -477,8 +698,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide only TopicA - Res
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [~] .key1:
@@ -503,6 +724,16 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide only TopicA - Res
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -555,8 +786,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide only TopicA chang
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [~] .key1:
@@ -581,6 +812,16 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide only TopicA chang
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -627,8 +868,8 @@ exports[`diff.ts test complex diff markdown - diff rules: Multiple rules 1`] = `
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [~] .key1:
@@ -653,6 +894,16 @@ exports[`diff.ts test complex diff markdown - diff rules: Multiple rules 1`] = `
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -708,8 +959,8 @@ exports[`diff.ts test complex diff markdown - no diff rules 1`] = `
 !      [~] AWS::Lambda::Function Function Function76856677
 !       ├─ [~] Code
 !       │   └─ [~] .ZipFile:
-!       │       ├─ [-] CHANGED CODE
-!       │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
 !       ├─ [~] Environment
 !       │   └─ [~] .Variables:
 !       │       ├─ [~] .key1:
@@ -734,6 +985,16 @@ exports[`diff.ts test complex diff markdown - no diff rules 1`] = `
 !                  [-]     ]
 !                  [ ]   }
 !                  [ ] ]
+!      [~] AWS::Lambda::Function Function2 Function28EA0674A
+!       ├─ [~] Code
+!       │   └─ [~] .ZipFile:
+!       │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+!       │       └─ [+] CHANGED CODE
+!       └─ [~] Environment
+!           └─ [~] .Variables:
+!               └─ [~] .key1:
+!                   ├─ [-] value1
+!                   └─ [+] value1-change
 \`\`\`
 "
 `;
@@ -806,8 +1067,8 @@ Resources
 [~] AWS::Lambda::Function Function Function76856677
  ├─ [~] Code
  │   └─ [~] .ZipFile:
- │       ├─ [-] CHANGED CODE
- │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+ │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+ │       └─ [+] CHANGED CODE
  ├─ [~] Environment
  │   └─ [~] .Variables:
  │       ├─ [~] .key1:
@@ -832,6 +1093,16 @@ Resources
             [-]     ]
             [ ]   }
             [ ] ]
+[~] AWS::Lambda::Function Function2 Function28EA0674A
+ ├─ [~] Code
+ │   └─ [~] .ZipFile:
+ │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+ │       └─ [+] CHANGED CODE
+ └─ [~] Environment
+     └─ [~] .Variables:
+         └─ [~] .key1:
+             ├─ [-] value1
+             └─ [+] value1-change
 ✨ Number of stacks with differences: 4"
 `;
 
@@ -878,8 +1149,8 @@ AWS::EC2::InternetGateway.VPC/IGW.Tags >>         [ ] ]
 AWS::Lambda::Function.Function >> [~] AWS::Lambda::Function Function Function76856677
 AWS::Lambda::Function.Function.Code >>  ├─ [~] Code
 AWS::Lambda::Function.Function.Code.ZipFile >>  │   └─ [~] .ZipFile:
-AWS::Lambda::Function.Function.Code.ZipFile >>  │       ├─ [-] CHANGED CODE
-AWS::Lambda::Function.Function.Code.ZipFile >>  │       └─ [+] exports.handler = async function(event, context) { return "Hello World"; };
+AWS::Lambda::Function.Function.Code.ZipFile >>  │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+AWS::Lambda::Function.Function.Code.ZipFile >>  │       └─ [+] CHANGED CODE
 AWS::Lambda::Function.Function.Environment >>  ├─ [~] Environment
 AWS::Lambda::Function.Function.Environment.Variables >>  │   └─ [~] .Variables:
 AWS::Lambda::Function.Function.Environment.Variables.key1 >>  │       ├─ [~] .key1:
@@ -903,6 +1174,16 @@ AWS::Lambda::Function.Function.VpcConfig.SecurityGroupIds >>             [-]    
 AWS::Lambda::Function.Function.VpcConfig.SecurityGroupIds >>             [-]       "GroupId"
 AWS::Lambda::Function.Function.VpcConfig.SecurityGroupIds >>             [-]     ]
 AWS::Lambda::Function.Function.VpcConfig.SecurityGroupIds >>             [ ]   }
-AWS::Lambda::Function.Function.VpcConfig.SecurityGroupIds >>             [ ] ]",
+AWS::Lambda::Function.Function.VpcConfig.SecurityGroupIds >>             [ ] ]
+AWS::Lambda::Function.Function2 >> [~] AWS::Lambda::Function Function2 Function28EA0674A
+AWS::Lambda::Function.Function2.Code >>  ├─ [~] Code
+AWS::Lambda::Function.Function2.Code.ZipFile >>  │   └─ [~] .ZipFile:
+AWS::Lambda::Function.Function2.Code.ZipFile >>  │       ├─ [-] exports.handler = async function(event, context) { return "Hello World"; };
+AWS::Lambda::Function.Function2.Code.ZipFile >>  │       └─ [+] CHANGED CODE
+AWS::Lambda::Function.Function2.Environment >>  └─ [~] Environment
+AWS::Lambda::Function.Function2.Environment.Variables >>      └─ [~] .Variables:
+AWS::Lambda::Function.Function2.Environment.Variables.key1 >>          └─ [~] .key1:
+AWS::Lambda::Function.Function2.Environment.Variables.key1 >>              ├─ [-] value1
+AWS::Lambda::Function.Function2.Environment.Variables.key1 >>              └─ [+] value1-change",
 }
 `;
