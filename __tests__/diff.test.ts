@@ -83,7 +83,7 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
     new lambda.Function(stackC, 'Function', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('CHANGED CODE'),
+      code: lambda.Code.fromInline('exports.handler = async function(event, context) { return "Hello World"; };'),
       environment: {
         key1: 'value1',
         key2: 'value2'
@@ -96,6 +96,15 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
           vpc
         })
       ]
+    });
+    new lambda.Function(stackC, 'Function2', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline('exports.handler = async function(event, context) { return "Hello World"; };'),
+      environment: {
+        key1: 'value1'
+      },
+      memorySize: 256
     });
   } else {
     new sns.Topic(stackA, 'TopicA', {
@@ -121,7 +130,7 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
     new lambda.Function(stackC, 'Function', {
       runtime: lambda.Runtime.NODEJS_18_X,
       handler: 'index.handler',
-      code: lambda.Code.fromInline('exports.handler = async function(event, context) { return "Hello World"; };'),
+      code: lambda.Code.fromInline('CHANGED CODE'),
       environment: {
         key1: 'value1-change',
         key3: 'value3'
@@ -129,6 +138,16 @@ function testAssembly(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
       memorySize: 512,
       vpc: vpc,
       securityGroups: [sg1]
+    });
+
+    new lambda.Function(stackC, 'Function2', {
+      runtime: lambda.Runtime.NODEJS_18_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromInline('CHANGED CODE'),
+      environment: {
+        key1: 'value1-change'
+      },
+      memorySize: 256
     });
   }
 
@@ -299,6 +318,13 @@ describe('diff.ts', () => {
           name: 'hide-env-key1-changes',
           type: 'HIDE_PROPERTIES',
           path: 'AWS::Lambda::Function.*.Environment.Variables.key1'
+        }
+      ],
+      'Hide all Lambda code changes': [
+        {
+          name: 'hide-code-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::Lambda::Function.*.Code.*'
         }
       ],
 

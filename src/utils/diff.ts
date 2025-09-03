@@ -355,6 +355,43 @@ export function extractStackDiffOutput(
     });
   }
 
+  // Hide property lines that have no visible values (iteratively to handle nested properties)
+  let changesWereMade = true;
+  while (changesWereMade) {
+    changesWereMade = false;
+
+    for (let i = 0; i < diffLinesOutput.length; i++) {
+      const line = diffLinesOutput[i];
+      if (line.type === 'Property' && line.show) {
+        // Check if this property has any visible values
+        let hasVisibleValues = false;
+        for (let j = i + 1; j < diffLinesOutput.length; j++) {
+          const valueLine = diffLinesOutput[j];
+
+          // If we encounter a line at the same or shallower depth, or a new resource, we've moved past this property's values
+          if (
+            valueLine.type === 'Resource' ||
+            ((valueLine.type === 'Property' || valueLine.type === 'Value') && valueLine.depth <= line.depth)
+          ) {
+            break;
+          }
+
+          // If we find a visible value line, this property should remain visible
+          if (valueLine.show) {
+            hasVisibleValues = true;
+            break;
+          }
+        }
+
+        // If no visible values, hide this property line
+        if (!hasVisibleValues) {
+          diffLinesOutput[i].show = false;
+          changesWereMade = true;
+        }
+      }
+    }
+  }
+
   const markdown = [];
   if (resourceRulesApplied.length) {
     markdown.push(`!      {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
