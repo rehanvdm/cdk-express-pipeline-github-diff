@@ -387743,10 +387743,10 @@ var cache3 = __toESM(require_cache3(), 1);
 // src/utils/shared.ts
 var import_crypto41 = require("crypto");
 var CDK_EXPRESS_PIPELINE_JSON_FILE = "cdk-express-pipeline.json";
-function getCacheKey(stackSelector) {
+function getCacheKey(stackSelector, cloudAssemblyDirectory) {
   let ret = `cdk-diff-pipeline-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}-`;
   if (stackSelector) {
-    ret += (0, import_crypto41.createHash)("md5").update(stackSelector).digest("hex");
+    ret += (0, import_crypto41.createHash)("md5").update(stackSelector + cloudAssemblyDirectory).digest("hex");
   }
   return ret;
 }
@@ -390517,7 +390517,7 @@ async function generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAss
   core2.info("Successfully generated CDK Express Pipeline diffs");
   const savedDir = getDiffsDir(cloudAssemblyDirectory);
   const pipelineOrderFile = `${cloudAssemblyDirectory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
-  const cacheKey = getCacheKey(stackSelectors);
+  const cacheKey = getCacheKey(stackSelectors, cloudAssemblyDirectory);
   const savedKey = await cache3.saveCache([savedDir, pipelineOrderFile], cacheKey);
   core2.info(`Successfully cached CDK Express Pipeline diffs with key: ${cacheKey} and id: ${savedKey}`);
 }
