@@ -5,7 +5,6 @@ import { DiffMethod, ExpandStackSelection, IoMessage, StackSelectionStrategy, To
 import { getNowFormated } from '../utils/output.js';
 import { DiffRule, generateDiffs, getDiffsDir, saveDiffs } from '../utils/diff.js';
 import * as cache from '@actions/cache';
-import { DefaultArtifactClient } from '@actions/artifact';
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey } from '../utils/shared.js';
 import * as jsYaml from 'js-yaml';
@@ -141,10 +140,6 @@ async function generateJsonDiffsAndCache(
   const pipelineOrderFile = `${cloudAssemblyDirectory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
   const cacheKey = getCacheKey(stackSelectors, cloudAssemblyDirectory);
   const savedKey = await cache.saveCache([savedDir, pipelineOrderFile], cacheKey);
-
-  const artifact = new DefaultArtifactClient();
-  await artifact.uploadArtifact(cacheKey, [savedDir, pipelineOrderFile], '.');
-
   core.info(`Successfully cached CDK Express Pipeline diffs with key: ${cacheKey} and id: ${savedKey}`);
 }
 
