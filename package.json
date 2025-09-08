@@ -47,7 +47,7 @@
     "@octokit/webhooks-definitions": "^3.68.1",
     "@types/js-yaml": "^4.0.9",
     "aws-cdk-lib": "^2.208.0",
-    "cdk-express-pipeline": "^1.6.0",
+    "cdk-express-pipeline": "^2.0.0",
     "js-yaml": "^4.1.0",
     "minimatch": "^10.0.3"
   },
