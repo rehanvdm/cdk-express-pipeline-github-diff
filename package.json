@@ -42,13 +42,13 @@
     "@actions/core": "^1.11.1",
     "@actions/github": "^6.0.1",
     "@aws-cdk/toolkit-lib": "^1.4.0",
-    "@octokit/core": "^7.0.3",
+    "@octokit/core": "^7.0.6",
     "@octokit/plugin-rest-endpoint-methods": "^16.0.0",
     "@octokit/webhooks-definitions": "^3.68.1",
     "@types/js-yaml": "^4.0.9",
     "aws-cdk-lib": "^2.208.0",
     "cdk-express-pipeline": "^1.6.0",
-    "js-yaml": "^4.1.0",
+    "js-yaml": "^4.1.1",
     "minimatch": "^10.0.3"
   },
   "devDependencies": {
