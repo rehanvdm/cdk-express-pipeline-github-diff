@@ -2,7 +2,7 @@ import * as core from '@actions/core';
 import * as github from '@actions/github';
 import { PullRequestEvent } from '@octokit/webhooks-definitions/schema.js';
 import { DiffMethod, ExpandStackSelection, IoMessage, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
-import { getNowFormated } from '../utils/output.js';
+import { getNowFormated, setGeneratingPrDescription } from '../utils/output.js';
 import { DiffRule, generateDiffs, getDiffsDir, saveDiffs } from '../utils/diff.js';
 import * as cache from '@actions/cache';
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
@@ -35,14 +35,21 @@ export async function generate() {
   }
 
   let gitHash: string;
+  let owner: string;
+  let repo: string;
+  let pullNumber: number;
   if (github.context.eventName === 'pull_request') {
     const pushPayload = github.context.payload as PullRequestEvent;
     gitHash = pushPayload.pull_request.head.sha;
+    owner = pushPayload.repository.owner.login;
+    repo = pushPayload.repository.name;
+    pullNumber = pushPayload.pull_request.number;
   } else {
     core.setFailed('This action can only be used in a pull request context.');
     return;
   }
   const jobName = core.getInput('job-name', { required: false }) || github.context.job;
+  await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
   await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
   await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory, cdkSummaryDiff, diffRules);

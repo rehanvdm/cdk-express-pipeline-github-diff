@@ -408211,14 +408211,41 @@ function getNowFormated() {
   return (/* @__PURE__ */ new Date()).toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "") + // remove milliseconds + Z
   " (UTC)";
 }
+var MARKER = "<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->";
+var MARKER_HEADER = `${MARKER}
+<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
+---`;
+async function getUpdatedDescription(octokit, owner, repo, pullNumber, newMarkerContent) {
+  const response = await octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: pullNumber
+  });
+  const currentDescription = response.data.body || "";
+  const markerRegex = new RegExp(`${MARKER}[\\s\\S]*`, "g");
+  const cleanedDescription = currentDescription.replace(markerRegex, "").trim();
+  return cleanedDescription + (cleanedDescription ? "\n\n" : "") + newMarkerContent;
+}
+async function setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitHash) {
+  const MyOctokit = Octokit.plugin(restEndpointMethods);
+  const octokit = new MyOctokit({ auth: ghToken });
+  const now = getNowFormated();
+  const newContent = `${MARKER_HEADER}
+*\u23F3 Generating diff from commit: ${gitHash} at ${now}...*`;
+  const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
+  await octokit.rest.pulls.update({
+    owner,
+    repo,
+    pull_number: pullNumber,
+    body: combinedContent
+  });
+  return combinedContent;
+}
 async function updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
   const now = getNowFormated();
-  const marker = "<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->";
-  let newContent = `${marker}
-<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
----`;
+  let newContent = MARKER_HEADER;
   for (const diff2 of diffs) {
     const summaryMarkers = [];
     if (diff2.summary.additions) {
@@ -408242,15 +408269,7 @@ ${diff2.markdown}
 
 *Generated At: ${now} from commit: ${gitHash}*`;
   }
-  const response = await octokit.rest.pulls.get({
-    owner,
-    repo,
-    pull_number: pullNumber
-  });
-  const currentDescription = response.data.body || "";
-  const markerRegex = new RegExp(`${marker}[\\s\\S]*`, "g");
-  const cleanedDescription = currentDescription.replace(markerRegex, "").trim();
-  let combinedContent = cleanedDescription + (cleanedDescription ? "\n\n" : "") + newContent;
+  let combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
   if (combinedContent.length > MAX_DESCRIPTION_LENGTH) {
     const availableSpace = MAX_DESCRIPTION_LENGTH - 100;
     combinedContent = combinedContent.substring(0, availableSpace) + "... TRUNCATED Look at GitHub Actions logs for full diff";
@@ -412842,14 +412861,21 @@ async function generate() {
     });
   }
   let gitHash;
+  let owner;
+  let repo;
+  let pullNumber;
   if (github.context.eventName === "pull_request") {
     const pushPayload = github.context.payload;
     gitHash = pushPayload.pull_request.head.sha;
+    owner = pushPayload.repository.owner.login;
+    repo = pushPayload.repository.name;
+    pullNumber = pushPayload.pull_request.number;
   } else {
     core2.setFailed("This action can only be used in a pull request context.");
     return;
   }
   const jobName = core2.getInput("job-name", { required: false }) || github.context.job;
+  await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
   await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
   await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory, cdkSummaryDiff, diffRules);

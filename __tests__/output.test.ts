@@ -1,5 +1,5 @@
 //@ts-expect-error TS/JS import issue but works
-import { updateGithubPrDescription } from '../src/utils/output';
+import { updateGithubPrDescription, setGeneratingPrDescription } from '../src/utils/output';
 
 // Mock the modules
 jest.mock('@octokit/core', () => {
@@ -339,6 +339,108 @@ Some text in between
 
     expect(result).toContain('CDK Diff Dev');
     expect(result).toContain('CDK Diff Prod');
+    expect(result).toMatchSnapshot();
+  });
+});
+
+describe('setGeneratingPrDescription', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockOctokitInstance: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockRestEndpointMethods: any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    //eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Octokit } = require('@octokit/core');
+    //eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { restEndpointMethods } = require('@octokit/plugin-rest-endpoint-methods');
+
+    mockOctokitInstance = new Octokit();
+    mockRestEndpointMethods = restEndpointMethods;
+
+    mockRestEndpointMethods.mockReturnValue(mockOctokitInstance.rest);
+
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2024-01-01T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('should set PR description to generating state when no existing marker', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const gitHash = 'abc123def456';
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: 'Existing PR description' }
+    });
+
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitHash);
+
+    expect(mockOctokitInstance.rest.pulls.update).toHaveBeenCalledWith({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      body: result
+    });
+
+    expect(result).toContain('⏳ Generating diff from commit: abc123def456');
+    expect(result).toMatchSnapshot();
+  });
+
+  it('should replace existing marker content with generating state', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const gitHash = 'abc123def456';
+
+    const existingDescription = `Existing PR description
+
+<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->
+<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
+---
+## CDK Diff
+
+*Generated At: 2024-01-01 11:00:00 (UTC) from commit: oldHash123*`;
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: existingDescription }
+    });
+
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitHash);
+
+    expect(result).not.toContain('oldHash123');
+    expect(result).toContain('⏳ Generating diff from commit: abc123def456');
+    expect(result).toMatchSnapshot();
+  });
+
+  it('should handle empty existing description', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const gitHash = 'abc123def456';
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: null }
+    });
+
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitHash);
+
+    expect(result).toContain('⏳ Generating diff from commit: abc123def456');
     expect(result).toMatchSnapshot();
   });
 });

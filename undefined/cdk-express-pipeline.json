@@ -1,0 +1,18 @@
+{
+  "waves": [
+    {
+      "waveId": "wave1",
+      "stages": [
+        {
+          "stageId": "stage1",
+          "stacks": [
+            {
+              "stackId": "wave1_stage1_stack-a",
+              "stackName": "StackA"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
