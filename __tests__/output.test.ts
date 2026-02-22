@@ -1,5 +1,9 @@
 //@ts-expect-error TS/JS import issue but works
-import { updateGithubPrDescription, setGeneratingPrDescription } from '../src/utils/output';
+import {
+  updateGithubPrDescription,
+  updateGithubPrDescriptionWithError,
+  setGeneratingPrDescription
+} from '../src/utils/output';
 
 // Mock the modules
 jest.mock('@octokit/core', () => {
@@ -442,5 +446,144 @@ describe('setGeneratingPrDescription', () => {
 
     expect(result).toContain('⏳ Generating diff from latest commit: abc123def456');
     expect(result).toMatchSnapshot();
+  });
+});
+
+describe('updateGithubPrDescriptionWithError', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockOctokitInstance: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockRestEndpointMethods: any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    //eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Octokit } = require('@octokit/core');
+    //eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { restEndpointMethods } = require('@octokit/plugin-rest-endpoint-methods');
+
+    mockOctokitInstance = new Octokit();
+    mockRestEndpointMethods = restEndpointMethods;
+
+    mockRestEndpointMethods.mockReturnValue(mockOctokitInstance.rest);
+
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2024-01-01T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('should update PR description with error message when no existing marker', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const gitHash = 'abc123def456';
+    const error = new Error('Something went wrong during diff generation');
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: 'Existing PR description' }
+    });
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await updateGithubPrDescriptionWithError(owner, repo, pullNumber, ghToken, gitHash, error);
+
+    expect(mockOctokitInstance.rest.pulls.update).toHaveBeenCalledWith({
+      owner,
+      repo,
+      pull_number: pullNumber,
+      body: result
+    });
+    expect(result).toContain('❌ Failed to generate/print diff from commit: abc123def456');
+    expect(result).toContain('Something went wrong during diff generation');
+    expect(result).toContain('See Actions logs for full details.');
+    expect(result).toMatchSnapshot();
+  });
+
+  it('should replace existing marker content with error message', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const gitHash = 'abc123def456';
+    const error = new Error('Cache restore failed');
+
+    const existingDescription = `Existing PR description
+
+<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->
+<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
+---
+## CDK Diff
+
+⏳ Generating diff from latest commit: abc123def456 at 2024-01-01 11:00:00 (UTC)...`;
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: existingDescription }
+    });
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await updateGithubPrDescriptionWithError(owner, repo, pullNumber, ghToken, gitHash, error);
+
+    expect(result).not.toContain('⏳ Generating');
+    expect(result).toContain('❌ Failed to generate/print diff from commit: abc123def456');
+    expect(result).toContain('Cache restore failed');
+    expect(result).toMatchSnapshot();
+  });
+
+  it('should handle empty existing description', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const gitHash = 'abc123def456';
+    const error = new Error('Unexpected failure');
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: null }
+    });
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await updateGithubPrDescriptionWithError(owner, repo, pullNumber, ghToken, gitHash, error);
+
+    expect(result).toContain('❌ Failed to generate/print diff from commit: abc123def456');
+    expect(result).toContain('Unexpected failure');
+    expect(result).toMatchSnapshot();
+  });
+
+  it('should handle non-Error thrown values', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const gitHash = 'abc123def456';
+    const error = 'A plain string error';
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: 'PR description' }
+    });
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await updateGithubPrDescriptionWithError(owner, repo, pullNumber, ghToken, gitHash, error);
+
+    expect(result).toContain('A plain string error');
+    expect(result).toMatchSnapshot();
+  });
+
+  it('should handle API errors gracefully', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const gitHash = 'abc123def456';
+    const error = new Error('Original error');
+
+    mockOctokitInstance.rest.pulls.get.mockRejectedValue(new Error('API Error'));
+
+    await expect(updateGithubPrDescriptionWithError(owner, repo, pullNumber, ghToken, gitHash, error)).rejects.toThrow(
+      'API Error'
+    );
   });
 });

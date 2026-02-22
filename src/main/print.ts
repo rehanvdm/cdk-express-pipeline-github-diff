@@ -1,6 +1,4 @@
 import * as core from '@actions/core';
-import * as github from '@actions/github';
-import { PullRequestEvent } from '@octokit/webhooks-definitions/schema.js';
 import { DiffSummary, generateMarkdown, getDiffsDir, getSavedDiffs } from '../utils/diff.js';
 import * as cache from '@actions/cache';
 import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
@@ -9,13 +7,15 @@ import path from 'node:path';
 import { AssemblyDiff, updateGithubPrDescription } from '../utils/output.js';
 import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey } from '../utils/shared.js';
 import * as jsYaml from 'js-yaml';
+import * as github from '@actions/github';
+import { PrContext } from './index.js';
 
 type PrintAssemblyDiff = {
   header: string;
   directory: string;
 };
 
-export async function print() {
+export async function print(prContext: PrContext) {
   const assemblyDiffs: PrintAssemblyDiff[] = [];
   const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: false });
   const cloudAssemblies = core.getInput('cloud-assemblies', { required: false });
@@ -28,17 +28,14 @@ export async function print() {
   } else if (cloudAssemblies) {
     const cloudAssembliesParsed = jsYaml.load(cloudAssemblies);
     if (!Array.isArray(cloudAssembliesParsed)) {
-      core.setFailed('The "cloud-assemblies" input must be a YAML array.');
-      return;
+      throw new Error('The "cloud-assemblies" input must be a YAML array.');
     }
     for (const assembly of cloudAssembliesParsed) {
       if (typeof assembly !== 'object' || !assembly.header || !assembly.directory) {
-        core.setFailed('Each item in "cloud-assemblies" must have "header" and "directory" properties.');
-        return;
+        throw new Error('Each item in "cloud-assemblies" must have "header" and "directory" properties.');
       }
       if (assemblyDiffs.find((a) => a.directory === assembly.directory)) {
-        core.setFailed(`The directory "${assembly.directory}" can only be specified once in "cloud-assemblies".`);
-        continue;
+        throw new Error(`The directory "${assembly.directory}" can only be specified once in "cloud-assemblies".`);
       }
       assemblyDiffs.push({
         header: assembly.header,
@@ -52,22 +49,7 @@ export async function print() {
     });
   }
 
-  const githubToken = core.getInput('github-token', { required: true });
-  let owner: string;
-  let repo: string;
-  let pullNumber: number;
-  let gitHash: string;
-  if (github.context.eventName === 'pull_request') {
-    const pushPayload = github.context.payload as PullRequestEvent;
-    owner = pushPayload.repository.owner.login;
-    repo = pushPayload.repository.name;
-    pullNumber = pushPayload.pull_request.number;
-    gitHash = pushPayload.pull_request.head.sha;
-  } else {
-    core.setFailed('This action can only be used in a pull request context.');
-    return;
-  }
-
+  const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
   await restoreCaches(githubToken, assemblyDiffs);
   await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash);
 }

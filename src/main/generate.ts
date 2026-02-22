@@ -1,6 +1,5 @@
 import * as core from '@actions/core';
 import * as github from '@actions/github';
-import { PullRequestEvent } from '@octokit/webhooks-definitions/schema.js';
 import { DiffMethod, ExpandStackSelection, IoMessage, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
 import { getNowFormated, setGeneratingPrDescription } from '../utils/output.js';
 import { DiffRule, generateDiffs, getDiffsDir, saveDiffs } from '../utils/diff.js';
@@ -8,24 +7,22 @@ import * as cache from '@actions/cache';
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey } from '../utils/shared.js';
 import * as jsYaml from 'js-yaml';
+import { PrContext } from './index.js';
 
-export async function generate() {
+export async function generate(prContext: PrContext) {
   const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: false }) || 'cdk.out';
-  const githubToken = core.getInput('github-token', { required: true });
   const stackSelectors = core.getInput('stack-selectors', { required: false }) || '**';
 
   const diffRulesProp = core.getInput('diff-rules', { required: false }) || '[]';
   const diffRulesParsed = jsYaml.load(diffRulesProp);
   if (!Array.isArray(diffRulesParsed)) {
-    core.setFailed('The "diff-rules" input must be a YAML array.');
-    return;
+    throw new Error('The "diff-rules" input must be a YAML array.');
   }
 
   const diffRules: DiffRule[] = [];
   for (const rule of diffRulesParsed) {
     if (typeof rule !== 'object' || !rule.name || !rule.type || !rule.path) {
-      core.setFailed('Each item in "diff-rules" must have "name", "type" and "path" properties.');
-      return;
+      throw new Error('Each item in "diff-rules" must have "name", "type" and "path" properties.');
     }
     diffRules.push({
       name: rule.name,
@@ -34,20 +31,7 @@ export async function generate() {
     });
   }
 
-  let gitHash: string;
-  let owner: string;
-  let repo: string;
-  let pullNumber: number;
-  if (github.context.eventName === 'pull_request') {
-    const pushPayload = github.context.payload as PullRequestEvent;
-    gitHash = pushPayload.pull_request.head.sha;
-    owner = pushPayload.repository.owner.login;
-    repo = pushPayload.repository.name;
-    pullNumber = pushPayload.pull_request.number;
-  } else {
-    core.setFailed('This action can only be used in a pull request context.');
-    return;
-  }
+  const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
   const jobName = core.getInput('job-name', { required: false }) || github.context.job;
   await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
@@ -100,7 +84,6 @@ async function diff(stackSelectors: string, cloudAssemblyDirectory: string) {
     .map((s) => s.trim().replaceAll('`', ''))
     .filter((s) => s.length > 0);
   if (patterns.length === 0) {
-    core.setFailed('No stack selectors provided. Please specify at least one stack selector pattern.');
     throw new Error('No stack selectors provided. Please specify at least one stack selector pattern.');
   }
   core.debug(`Stack selectors: ${patterns.join(', ')}`);

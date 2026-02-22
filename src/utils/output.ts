@@ -70,6 +70,42 @@ export async function setGeneratingPrDescription(
   return combinedContent;
 }
 
+export async function updateGithubPrDescriptionWithError(
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  ghToken: string,
+  gitHash: string,
+  error: unknown
+) {
+  const MyOctokit = Octokit.plugin(restEndpointMethods);
+  const octokit = new MyOctokit({ auth: ghToken });
+
+  const now = getNowFormated();
+  const errorMessage = error instanceof Error ? error.message : String(error);
+  const newContent = `${MARKER_HEADER}
+## CDK Diff
+
+❌ Failed to generate/print diff from commit: ${gitHash} at ${now}
+
+\`\`\`
+${errorMessage}
+\`\`\`
+
+See Actions logs for full details.`;
+
+  const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
+
+  await octokit.rest.pulls.update({
+    owner,
+    repo,
+    pull_number: pullNumber,
+    body: combinedContent
+  });
+
+  return combinedContent;
+}
+
 export async function updateGithubPrDescription(
   owner: string,
   repo: string,
