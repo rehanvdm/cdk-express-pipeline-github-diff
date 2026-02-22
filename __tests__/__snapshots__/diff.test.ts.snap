@@ -1,88 +1,5 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
-exports[`diff.ts test complex diff markdown - diff rules: Hide Lambda all code changes 1`] = `
-"\`\`\`diff
-🌊 wave1
-  🏗 stage1
-    📦 StackA (wave1_stage1_stack-a)
-!      [~] AWS::SNS::Topic TopicA TopicA1C813746
-!       └─ [~] DisplayName
-!           ├─ [-] Topic A
-!           └─ [+] Topic A Change
-  🏗 wave1stage2
-    📦 StackB (wave1_wave1stage2_stack-b)
--      [-] AWS::SNS::Topic TopicBB2A41848 destroy
-+      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
--      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace
-!       ├─ [-] DeliveryStatusLogging
-!       │   └─ [{"Protocol":"http/s"}]
-!       ├─ [~] DisplayName
-!       │   ├─ [-] Topic R
-!       │   └─ [+] Topic R can change
-!       └─ [~] TopicName (requires replacement)
-!           ├─ [-] Topic R
-!           └─ [+] Topic R should not change
-    📦 StackD (wave1_wave1stage2_stack-d)
-🌊 wave2
-  🏗 stage1
-    📦 StackC (wave2_stage1_stack-c)
--      [-] AWS::EC2::SecurityGroup SG20CE3219C destroy
-+      [+] AWS::SNS::Topic TopicC TopicCB48CAADF
-!      [~] AWS::EC2::VPC VPC VPCB9E5F0B4
-!       └─ [~] Tags
-!           └─ @@ -1,6 +1,6 @@
-!              [ ] [
-!              [ ]   {
-!              [ ]     "Key": "Name",
-!              [-]     "Value": "wave2_stage1_stack-c/VPC"
-!              [+]     "Value": "VPC Changed"
-!              [ ]   }
-!              [ ] ]
-!      [~] AWS::EC2::InternetGateway VPC/IGW VPCIGWB7E252D3
-!       └─ [~] Tags
-!           └─ @@ -1,6 +1,6 @@
-!              [ ] [
-!              [ ]   {
-!              [ ]     "Key": "Name",
-!              [-]     "Value": "wave2_stage1_stack-c/VPC"
-!              [+]     "Value": "VPC Changed"
-!              [ ]   }
-!              [ ] ]
-!      [~] AWS::Lambda::Function Function Function76856677 {Applied Property Diff Rules: hide-code-changes(3)}
-!       ├─ [~] Environment
-!       │   └─ [~] .Variables:
-!       │       ├─ [~] .key1:
-!       │       │   ├─ [-] value1
-!       │       │   └─ [+] value1-change
-!       │       ├─ [-] Removed: .key2
-!       │       └─ [+] Added: .key3
-!       ├─ [~] MemorySize
-!       │   ├─ [-] 256
-!       │   └─ [+] 512
-!       └─ [~] VpcConfig
-!           └─ [~] .SecurityGroupIds:
-!               └─ @@ -4,11 +4,5 @@
-!                  [ ]       "SG1BA065B6E",
-!                  [ ]       "GroupId"
-!                  [ ]     ]
-!                  [-]   },
-!                  [-]   {
-!                  [-]     "Fn::GetAtt": [
-!                  [-]       "SG20CE3219C",
-!                  [-]       "GroupId"
-!                  [-]     ]
-!                  [ ]   }
-!                  [ ] ]
-!      [~] AWS::Lambda::Function Function2 Function28EA0674A {Applied Property Diff Rules: hide-code-changes(3)}
-!       └─ [~] Environment
-!           └─ [~] .Variables:
-!               └─ [~] .key1:
-!                   ├─ [-] value1
-!                   └─ [+] value1-change
-\`\`\`
-"
-`;
-
 exports[`diff.ts test complex diff markdown - diff rules: Hide Lambda changes to all Lambdas with env key1 1`] = `
 "\`\`\`diff
 🌊 wave1
@@ -1186,4 +1103,22 @@ AWS::Lambda::Function.Function2.Environment.Variables.key1 >>          └─ [~
 AWS::Lambda::Function.Function2.Environment.Variables.key1 >>              ├─ [-] value1
 AWS::Lambda::Function.Function2.Environment.Variables.key1 >>              └─ [+] value1-change",
 }
+`;
+
+exports[`diff.ts test undefined 1`] = `
+"\`\`\`diff
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+-      [-] AWS::IAM::Role lambdaapiServiceRole7E4263EE destroy
+-      [-] AWS::Lambda::Function lambdaapi893CD94E destroy
+-      [-] AWS::Lambda::Url lambdaapiFunctionUrl85BEDEA9 destroy
+-      [-] AWS::Lambda::Permission lambdaapiinvokefunctionurlA723ACB6 destroy
+-      [-] AWS::Lambda::Permission lambdaapiinvokefunction335DEA76 destroy
+      
+      Outputs
+-      [-] Output LambdaAPIHost: {"Value":{"Fn::GetAtt":["lambdaapiFunctionUrl85BEDEA9","FunctionUrl"]}}
+-      [-] Output LambdaAPIOrigin: {"Value":{"Fn::Select":[2,{"Fn::Split":["/",{"Fn::GetAtt":["lambdaapiFunctionUrl85BEDEA9","FunctionUrl"]}]}]}}
+\`\`\`
+"
 `;
