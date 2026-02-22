@@ -19,8 +19,11 @@
   "exports": {
     ".": "./dist/index.cjs"
   },
+  "volta": {
+    "node": "24.13.1"
+  },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "scripts": {
     "bundle": "npm run format:write && npm run package",
