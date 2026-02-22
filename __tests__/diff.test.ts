@@ -254,8 +254,11 @@ describe('diff.ts', () => {
         .diffLines.map((l: DiffLineOutput) => l.path + ' >> ' + l.lineContent)
         .join('\n');
     }
-
-    expect(testDiffRes.cdkDiffOutput).toMatchSnapshot();
+    function safeSnapShotMarkdownCompare(str: string) {
+      // Ensure that the line after "There were no differences" is an empty line.
+      return str.replace(/(There were no differences\.\n)(?!\n)/g, '$1\n');
+    }
+    expect(safeSnapShotMarkdownCompare(testDiffRes.cdkDiffOutput)).toMatchSnapshot();
     expect(result).toMatchSnapshot();
   });
 
