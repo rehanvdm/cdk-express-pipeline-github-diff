@@ -54,7 +54,9 @@ export async function setGeneratingPrDescription(
 
   const now = getNowFormated();
   const newContent = `${MARKER_HEADER}
-*⏳ Generating diff from commit: ${gitHash} at ${now}...*`;
+## CDK Diff
+
+⏳ Generating diff from latest commit: ${gitHash} at ${now}...`;
 
   const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
 

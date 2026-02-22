@@ -408231,7 +408231,9 @@ async function setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitH
   const octokit = new MyOctokit({ auth: ghToken });
   const now = getNowFormated();
   const newContent = `${MARKER_HEADER}
-*\u23F3 Generating diff from commit: ${gitHash} at ${now}...*`;
+## CDK Diff
+
+\u23F3 Generating diff from latest commit: ${gitHash} at ${now}...`;
   const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
   await octokit.rest.pulls.update({
     owner,

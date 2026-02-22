@@ -4,7 +4,9 @@ exports[`setGeneratingPrDescription should handle empty existing description 1`]
 "<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->
 <!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
 ---
-*⏳ Generating diff from commit: abc123def456 at 2024-01-01 12:00:00 (UTC)...*"
+## CDK Diff
+
+⏳ Generating diff from latest commit: abc123def456 at 2024-01-01 12:00:00 (UTC)..."
 `;
 
 exports[`setGeneratingPrDescription should replace existing marker content with generating state 1`] = `
@@ -13,7 +15,9 @@ exports[`setGeneratingPrDescription should replace existing marker content with 
 <!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->
 <!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
 ---
-*⏳ Generating diff from commit: abc123def456 at 2024-01-01 12:00:00 (UTC)...*"
+## CDK Diff
+
+⏳ Generating diff from latest commit: abc123def456 at 2024-01-01 12:00:00 (UTC)..."
 `;
 
 exports[`setGeneratingPrDescription should set PR description to generating state when no existing marker 1`] = `
@@ -22,7 +26,9 @@ exports[`setGeneratingPrDescription should set PR description to generating stat
 <!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->
 <!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
 ---
-*⏳ Generating diff from commit: abc123def456 at 2024-01-01 12:00:00 (UTC)...*"
+## CDK Diff
+
+⏳ Generating diff from latest commit: abc123def456 at 2024-01-01 12:00:00 (UTC)..."
 `;
 
 exports[`updateGithubPrDescription should handle description with only whitespace 1`] = `

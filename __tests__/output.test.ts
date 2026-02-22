@@ -392,7 +392,7 @@ describe('setGeneratingPrDescription', () => {
       body: result
     });
 
-    expect(result).toContain('⏳ Generating diff from commit: abc123def456');
+    expect(result).toContain('⏳ Generating diff from latest commit: abc123def456');
     expect(result).toMatchSnapshot();
   });
 
@@ -421,7 +421,7 @@ describe('setGeneratingPrDescription', () => {
     const result = await setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitHash);
 
     expect(result).not.toContain('oldHash123');
-    expect(result).toContain('⏳ Generating diff from commit: abc123def456');
+    expect(result).toContain('⏳ Generating diff from latest commit: abc123def456');
     expect(result).toMatchSnapshot();
   });
 
@@ -440,7 +440,7 @@ describe('setGeneratingPrDescription', () => {
 
     const result = await setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitHash);
 
-    expect(result).toContain('⏳ Generating diff from commit: abc123def456');
+    expect(result).toContain('⏳ Generating diff from latest commit: abc123def456');
     expect(result).toMatchSnapshot();
   });
 });
