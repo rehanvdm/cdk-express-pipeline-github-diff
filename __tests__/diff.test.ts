@@ -357,4 +357,70 @@ describe('diff.ts', () => {
       expect(markdown).toMatchSnapshot(name);
     }
   });
+
+  it('test undefined', async () => {
+    const cdkOut = path.join(__dirname, 'fixtures', 'cdk.out', 'testAssembly');
+
+    function testAssemblyWithUndefined(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
+      if (opts?.outputDir) {
+        process.env.CDK_OUTDIR = opts?.outputDir;
+      }
+
+      const app = new cdk.App({
+        outdir: opts?.outputDir
+      });
+      const expressPipeline = new CdkExpressPipeline();
+      const wave1 = expressPipeline.addWave('wave1');
+      const wave1stage1 = wave1.addStage('stage1');
+      const stackA = new ExpressStack(app, 'stack-a', wave1stage1, {
+        stackName: 'StackA'
+      });
+
+      if (!opts?.withChange) {
+        const apiLambda = new lambda.Function(stackA, 'lambda-api', {
+          functionName: 'api',
+          code: lambda.Code.fromInline('exports.handler = async function(event, context) { return "Hello World"; };'),
+          handler: 'index.handler',
+          runtime: lambda.Runtime.NODEJS_22_X,
+          memorySize: 1024,
+          environment: {
+            AWS_NODEJS_CONNECTION_REUSE_ENABLED: '1'
+          }
+        });
+        const apiLambdaUrl = apiLambda.addFunctionUrl({
+          authType: lambda.FunctionUrlAuthType.NONE,
+          cors: {
+            allowedOrigins: ['*'],
+            allowedHeaders: ['*']
+          }
+        });
+
+        const apiOrigin = cdk.Fn.select(2, cdk.Fn.split('/', apiLambdaUrl.url));
+        new cdk.CfnOutput(stackA, 'Lambda API Host', { value: apiLambdaUrl.url });
+        new cdk.CfnOutput(stackA, 'Lambda API Origin', { value: apiOrigin });
+      }
+
+      expressPipeline.synth([wave1], false, {});
+      process.env.CDK_OUTDIR = undefined;
+
+      return {
+        assembly: app.synth()
+      };
+    }
+
+    const testDiffRes = await generateTemplateDiffs(testAssemblyWithUndefined, cdkOut);
+    const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput, []);
+    if (stackDiffs) {
+      await saveDiffs(stackDiffs, cdkOut);
+    }
+
+    // GH Action 2
+    const allStackDiffs = getSavedDiffs(cdkOut);
+    const shortHandOrder: CdkExpressPipelineAssembly = JSON.parse(
+      fs.readFileSync(path.join(cdkOut, CDK_EXPRESS_PIPELINE_JSON_FILE), 'utf-8')
+    );
+    const markdown = generateMarkdown(shortHandOrder, allStackDiffs);
+
+    expect(markdown).toMatchSnapshot();
+  });
 });
