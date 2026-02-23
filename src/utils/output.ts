@@ -19,6 +19,69 @@ export type AssemblyDiff = {
   markdown: string;
   summary: DiffSummary;
 };
+const MARKER = '<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->';
+const MARKER_HEADER = `${MARKER}\n<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->\n---`;
+
+async function getUpdatedDescription(
+  octokit: InstanceType<ReturnType<(typeof Octokit)['plugin']>>,
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  newMarkerContent: string
+): Promise<string> {
+  const response = await octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: pullNumber
+  });
+
+  const currentDescription = response.data.body || '';
+  const markerRegex = new RegExp(`${MARKER}[\\s\\S]*`, 'g');
+  const cleanedDescription = currentDescription.replace(markerRegex, '').trim();
+
+  return cleanedDescription + (cleanedDescription ? '\n\n' : '') + newMarkerContent;
+}
+
+const GENERATING_MARKER = '⏳ Generating diff from latest commit';
+
+export async function setGeneratingPrDescription(
+  owner: string,
+  repo: string,
+  pullNumber: number,
+  ghToken: string,
+  gitHash: string
+) {
+  const MyOctokit = Octokit.plugin(restEndpointMethods);
+  const octokit = new MyOctokit({ auth: ghToken });
+
+  const response = await octokit.rest.pulls.get({
+    owner,
+    repo,
+    pull_number: pullNumber
+  });
+
+  if ((response.data.body || '').includes(GENERATING_MARKER)) {
+    return response.data.body || '';
+  }
+
+  const now = getNowFormated();
+  const newContent = `${MARKER_HEADER}
+## CDK Diff
+
+${GENERATING_MARKER}: ${gitHash} at ${now}`;
+
+  const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
+
+  await octokit.rest.pulls.update({
+    owner,
+    repo,
+    pull_number: pullNumber,
+    body: combinedContent
+  });
+
+  return combinedContent;
+}
+
 export async function updateGithubPrDescription(
   owner: string,
   repo: string,
@@ -31,10 +94,7 @@ export async function updateGithubPrDescription(
   const octokit = new MyOctokit({ auth: ghToken });
 
   const now = getNowFormated();
-  const marker = '<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->';
-  let newContent = `${marker}
-<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
----`;
+  let newContent = MARKER_HEADER;
 
   for (const diff of diffs) {
     const summaryMarkers = [];
@@ -61,17 +121,7 @@ ${diff.markdown}
 *Generated At: ${now} from commit: ${gitHash}*`;
   }
 
-  const response = await octokit.rest.pulls.get({
-    owner,
-    repo,
-    pull_number: pullNumber
-  });
-
-  const currentDescription = response.data.body || '';
-  const markerRegex = new RegExp(`${marker}[\\s\\S]*`, 'g');
-  const cleanedDescription = currentDescription.replace(markerRegex, '').trim();
-
-  let combinedContent = cleanedDescription + (cleanedDescription ? '\n\n' : '') + newContent;
+  let combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
 
   if (combinedContent.length > MAX_DESCRIPTION_LENGTH) {
     const availableSpace = MAX_DESCRIPTION_LENGTH - 100;

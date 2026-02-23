@@ -102,3 +102,7 @@ __tests__/runner/*
 *.code-workspace
 
 __tests__/fixtures/
+
+# Test artifacts
+pipeline-deployment-order.md
+undefined/
