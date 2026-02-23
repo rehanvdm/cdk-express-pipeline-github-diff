@@ -408243,7 +408243,7 @@ async function setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitH
   const newContent = `${MARKER_HEADER}
 ## CDK Diff
 
-${GENERATING_MARKER}: ${gitHash} at ${now}...`;
+${GENERATING_MARKER}: ${gitHash} at ${now}`;
   const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
   await octokit.rest.pulls.update({
     owner,
