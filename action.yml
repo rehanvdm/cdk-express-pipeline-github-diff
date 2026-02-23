@@ -75,6 +75,9 @@ inputs:
        - `type`: The type of rule. Options are:
          - `HIDE_RESOURCE`: Hides the entire resource diff if any property changes match the path
          - `HIDE_PROPERTIES`: Hides only the property changes that match the path, but shows the resource and other property changes
+         - `HIDE_RESOURCE_IF_EMPTY`: Does not hide any properties itself. After all other rules have run, if the matched
+           resource has no visible children remaining, hides the resource header too. Combine with `HIDE_PROPERTIES`
+           rules to suppress both the properties and the now-empty resource header.
        - `path`: A glob pattern to match on the path with format: "ResourceName.ResourceId.Property.NestedProperty.NestedProperty...."
                  If a ResourceId has / in its name, it will be replaced with _ to avoid issues with glob matching
 
