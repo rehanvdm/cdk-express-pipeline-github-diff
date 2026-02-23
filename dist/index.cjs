@@ -443149,13 +443149,26 @@ async function restoreCaches(githubToken, assemblyDiffs) {
       return;
     }
     for (const c6 of caches) {
-      const restoredKey = await restoreCache([savedDir, pipelineOrderFile], c6.key);
+      const maxAttempts = 10;
+      const retryDelayMs = 2e3;
+      let restoredKey;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        restoredKey = await restoreCache([savedDir, pipelineOrderFile], c6.key);
+        if (restoredKey)
+          break;
+        if (attempt < maxAttempts) {
+          info(
+            `Attempt ${attempt}/${maxAttempts}: Cache not yet available for key: ${c6.key}. Retrying in ${retryDelayMs / 1e3}s...`
+          );
+          await new Promise((resolve2) => setTimeout(resolve2, retryDelayMs));
+        }
+      }
       if (restoredKey) {
         info(
           `Successfully restored CDK Express Pipeline diffs from cache with key: ${c6.key} and id: ${restoredKey}`
         );
       } else {
-        info(`No cached CDK Express Pipeline diffs found with key: ${c6.key}`);
+        info(`No cached CDK Express Pipeline diffs found with key: ${c6.key} after ${maxAttempts} attempts`);
       }
     }
   }
