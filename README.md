@@ -70,6 +70,9 @@ The generate mode analyzes your CDK Express Pipeline assembly and creates detail
     - `HIDE_RESOURCE`: Hides the entire resource diff if any property changes match the path
     - `HIDE_PROPERTIES`: Hides only the property changes that match the path, but shows the resource and other property
       changes
+    - `HIDE_RESOURCE_IF_EMPTY`: Does not hide any properties itself. After all other rules have run, if the matched
+      resource has no visible children remaining, hides the resource header too. Combine with `HIDE_PROPERTIES` rules to
+      suppress both the properties and the now-empty resource header.
   - `path`: A glob pattern to match on the path with format:
     `ResourceName.ResourceId.Property.NestedProperty.NestedProperty....` If a ResourceId has / in its name, it will be
     replaced with \_ to avoid issues with glob matching
@@ -354,6 +357,99 @@ Output After:
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
 !      [~] AWS::EC2::VPC VPC VPCB9E5F0B4 {Applied Property Diff Rules: hide-all-tag-changes(9)}
+```
+
+</details>
+
+#### HIDE RESOURCE IF ALL PROPERTY CHANGES ARE HIDDEN
+
+`HIDE_RESOURCE_IF_EMPTY` does **not** hide any properties itself. It is a post-processing rule. After all other rules
+have run, if the matched resource has no visible children remaining, the resource header is hidden too. Combine it with
+`HIDE_PROPERTIES` rules that do the property hiding.
+
+This is useful when hiding properties on frequently changing resources, as it prevents empty resource headers from
+cluttering the diff output. This increases the signal-to-noise ratio by suppressing the entire resource when all its
+changes are hidden, rather than showing the resource with no changes visible.
+
+```yaml
+diff-rules: |
+  - name: hide-sns-display-properties
+    type: HIDE_PROPERTIES
+    path: AWS::SNS::Topic.*.DisplayName
+  - name: hide-sns-if-empty
+    type: HIDE_RESOURCE_IF_EMPTY
+    path: AWS::SNS::Topic.*
+```
+
+<details>
+<summary> Output Before & After </summary>
+
+Output Before:
+
+```diff
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      [~] AWS::SNS::Topic TopicA TopicA1C81374A
+!       └─ [~] DisplayName
+!           ├─ [-] Topic A
+!           └─ [+] Topic A Change
+!      [~] AWS::SNS::Topic TopicB TopicA1C81374B
+!       └─ [~] DisplayName
+!           ├─ [-] Topic B
+!           └─ [+] Topic B Change
+!      [~] AWS::SNS::Topic TopicC TopicA1C81374C
+!       └─ [~] DisplayName
+!           ├─ [-] Topic C
+!           └─ [+] Topic C Change
+  🏗 wave1stage2
+    📦 StackB (wave1_wave1stage2_stack-b)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+!      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace
+!       ├─ [~] DisplayName
+!       │   ├─ [-] Topic R
+!       │   └─ [+] Topic R can change
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+```
+
+Output After (`HIDE_PROPERTIES` hides all SNS properties first; `HIDE_RESOURCE_IF_EMPTY` then detects the now-empty `~`
+resource headers and removes them too):
+
+```diff
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      {Applied Resource Diff Rules: hide-sns-if-empty(3)}
+  🏗 wave1stage2
+    📦 StackB (wave1_wave1stage2_stack-b)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+-      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace {Applied Property Diff Rules: hide-sns-display-properties(3)}
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
+```
+
+Compare this to the output if we didn't have `HIDE_RESOURCE_IF_EMPTY`:
+
+```diff
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      [~] AWS::SNS::Topic TopicA TopicA1C81374A {Applied Property Diff Rules: hide-sns-display-properties(3)}
+!      [~] AWS::SNS::Topic TopicB TopicA1C81374B {Applied Property Diff Rules: hide-sns-display-properties(3)}
+!      [~] AWS::SNS::Topic TopicC TopicA1C81374C {Applied Property Diff Rules: hide-sns-display-properties(3)}
+    🏗 wave1stage2
+        📦 StackB (wave1_wave1stage2_stack-b)
+-      [-] AWS::SNS::Topic TopicBB2A41848 destroy
++      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
+-      [~] AWS::SNS::Topic TopicR TopicRC70D74C1 replace {Applied Property Diff Rules: hide-sns-display-properties(3)}
+!       └─ [~] TopicName (requires replacement)
+!           ├─ [-] Topic R
+!           └─ [+] Topic R should not change
 ```
 
 </details>

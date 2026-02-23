@@ -350,6 +350,61 @@ describe('diff.ts', () => {
           type: 'HIDE_PROPERTIES',
           path: 'AWS::SNS::Topic.*.TopicName'
         }
+      ],
+
+      // HIDE_RESOURCE_IF_EMPTY on its own does nothing — properties are still shown, so no resource
+      // is hidden. Demonstrates it is truly a post-processing-only rule.
+      'HIDE_RESOURCE_IF_EMPTY - standalone, no effect': [
+        {
+          name: 'hide-sns-if-empty',
+          type: 'HIDE_RESOURCE_IF_EMPTY',
+          path: 'AWS::SNS::Topic.*'
+        }
+      ],
+
+      // HIDE_PROPERTIES hides all SNS Topic properties; HIDE_RESOURCE_IF_EMPTY then detects the
+      // now-empty resource headers and removes them too.
+      'HIDE_RESOURCE_IF_EMPTY - all properties hidden by HIDE_PROPERTIES, resources hidden': [
+        {
+          name: 'hide-sns-properties',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*'
+        },
+        {
+          name: 'hide-sns-if-empty',
+          type: 'HIDE_RESOURCE_IF_EMPTY',
+          path: 'AWS::SNS::Topic.*'
+        }
+      ],
+
+      // HIDE_PROPERTIES only hides DisplayName. TopicA (only had DisplayName) becomes empty so
+      // HIDE_RESOURCE_IF_EMPTY hides it. TopicR still has TopicName visible so it stays.
+      'HIDE_RESOURCE_IF_EMPTY - some properties remain, resource stays visible': [
+        {
+          name: 'hide-sns-display-name',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*.DisplayName'
+        },
+        {
+          name: 'hide-sns-if-empty',
+          type: 'HIDE_RESOURCE_IF_EMPTY',
+          path: 'AWS::SNS::Topic.*'
+        }
+      ],
+
+      // HIDE_PROPERTIES handles DisplayName; HIDE_RESOURCE_IF_EMPTY targets only TopicR by ResourceId.
+      // TopicR still has remaining visible properties so it is NOT hidden despite the rule matching.
+      'HIDE_RESOURCE_IF_EMPTY combined with HIDE_PROPERTIES': [
+        {
+          name: 'hide-topics-display-name-changes',
+          type: 'HIDE_PROPERTIES',
+          path: 'AWS::SNS::Topic.*.DisplayName'
+        },
+        {
+          name: 'hide-topics-topic-name-if-empty',
+          type: 'HIDE_RESOURCE_IF_EMPTY',
+          path: 'AWS::SNS::Topic.TopicR*'
+        }
       ]
     };
 

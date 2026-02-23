@@ -410090,6 +410090,30 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
       }
     }
   }
+  const hideIfEmptyRules = diffRules.filter((r6) => r6.type === "HIDE_RESOURCE_IF_EMPTY");
+  if (hideIfEmptyRules.length > 0) {
+    for (let i6 = 0; i6 < diffLinesOutput.length; i6++) {
+      const line = diffLinesOutput[i6];
+      if (line.type !== "Resource" || !line.show || line.resourceSign !== "~")
+        continue;
+      const matchedRules = hideIfEmptyRules.filter((r6) => minimatch(line.path, r6.path));
+      if (matchedRules.length === 0)
+        continue;
+      let hasVisibleChildren = false;
+      for (let j6 = i6 + 1; j6 < diffLinesOutput.length; j6++) {
+        if (diffLinesOutput[j6].type === "Resource")
+          break;
+        if (diffLinesOutput[j6].show) {
+          hasVisibleChildren = true;
+          break;
+        }
+      }
+      if (!hasVisibleChildren) {
+        diffLinesOutput[i6].show = false;
+        resourceRulesApplied.push(...matchedRules);
+      }
+    }
+  }
   const markdown = [];
   if (resourceRulesApplied.length) {
     markdown.push(`!      {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
