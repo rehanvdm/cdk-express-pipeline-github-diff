@@ -408227,38 +408227,23 @@ async function getUpdatedDescription(octokit, owner, repo, pullNumber, newMarker
   const cleanedDescription = currentDescription.replace(markerRegex, "").trim();
   return cleanedDescription + (cleanedDescription ? "\n\n" : "") + newMarkerContent;
 }
+var GENERATING_MARKER = "\u23F3 Generating diff from latest commit";
 async function setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitHash) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
-  const now = getNowFormated();
-  const newContent = `${MARKER_HEADER}
-## CDK Diff
-
-\u23F3 Generating diff from latest commit: ${gitHash} at ${now}...`;
-  const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
-  await octokit.rest.pulls.update({
+  const response = await octokit.rest.pulls.get({
     owner,
     repo,
-    pull_number: pullNumber,
-    body: combinedContent
+    pull_number: pullNumber
   });
-  return combinedContent;
-}
-async function updateGithubPrDescriptionWithError(owner, repo, pullNumber, ghToken, gitHash, error3) {
-  const MyOctokit = Octokit.plugin(restEndpointMethods);
-  const octokit = new MyOctokit({ auth: ghToken });
+  if ((response.data.body || "").includes(GENERATING_MARKER)) {
+    return response.data.body || "";
+  }
   const now = getNowFormated();
-  const errorMessage = error3 instanceof Error ? error3.message : String(error3);
   const newContent = `${MARKER_HEADER}
 ## CDK Diff
 
-\u274C Failed to generate/print diff from commit: ${gitHash} at ${now}
-
-\`\`\`
-${errorMessage}
-\`\`\`
-
-See Actions logs for full details.`;
+${GENERATING_MARKER}: ${gitHash} at ${now}...`;
   const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
   await octokit.rest.pulls.update({
     owner,
@@ -413136,16 +413121,6 @@ async function run() {
     else if (mode === "print")
       await print(prContext);
   } catch (error3) {
-    if (prContext) {
-      await updateGithubPrDescriptionWithError(
-        prContext.owner,
-        prContext.repo,
-        prContext.pullNumber,
-        prContext.githubToken,
-        prContext.gitHash,
-        error3
-      );
-    }
     if (error3 instanceof Error)
       core4.setFailed(error3.message);
   }

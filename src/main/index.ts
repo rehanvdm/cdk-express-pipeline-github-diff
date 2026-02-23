@@ -3,7 +3,6 @@ import * as github from '@actions/github';
 import { PullRequestEvent } from '@octokit/webhooks-definitions/schema.js';
 import { generate } from './generate.js';
 import { print } from './print.js';
-import { updateGithubPrDescriptionWithError } from '../utils/output.js';
 
 export type PrContext = {
   owner: string;
@@ -45,16 +44,6 @@ export async function run(): Promise<void> {
     if (mode === 'generate') await generate(prContext);
     else if (mode === 'print') await print(prContext);
   } catch (error) {
-    if (prContext) {
-      await updateGithubPrDescriptionWithError(
-        prContext.owner,
-        prContext.repo,
-        prContext.pullNumber,
-        prContext.githubToken,
-        prContext.gitHash,
-        error
-      );
-    }
     if (error instanceof Error) core.setFailed(error.message);
   }
 }

@@ -42,6 +42,8 @@ async function getUpdatedDescription(
   return cleanedDescription + (cleanedDescription ? '\n\n' : '') + newMarkerContent;
 }
 
+const GENERATING_MARKER = '⏳ Generating diff from latest commit';
+
 export async function setGeneratingPrDescription(
   owner: string,
   repo: string,
@@ -52,47 +54,21 @@ export async function setGeneratingPrDescription(
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
 
-  const now = getNowFormated();
-  const newContent = `${MARKER_HEADER}
-## CDK Diff
-
-⏳ Generating diff from latest commit: ${gitHash} at ${now}...`;
-
-  const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
-
-  await octokit.rest.pulls.update({
+  const response = await octokit.rest.pulls.get({
     owner,
     repo,
-    pull_number: pullNumber,
-    body: combinedContent
+    pull_number: pullNumber
   });
 
-  return combinedContent;
-}
-
-export async function updateGithubPrDescriptionWithError(
-  owner: string,
-  repo: string,
-  pullNumber: number,
-  ghToken: string,
-  gitHash: string,
-  error: unknown
-) {
-  const MyOctokit = Octokit.plugin(restEndpointMethods);
-  const octokit = new MyOctokit({ auth: ghToken });
+  if ((response.data.body || '').includes(GENERATING_MARKER)) {
+    return response.data.body || '';
+  }
 
   const now = getNowFormated();
-  const errorMessage = error instanceof Error ? error.message : String(error);
   const newContent = `${MARKER_HEADER}
 ## CDK Diff
 
-❌ Failed to generate/print diff from commit: ${gitHash} at ${now}
-
-\`\`\`
-${errorMessage}
-\`\`\`
-
-See Actions logs for full details.`;
+${GENERATING_MARKER}: ${gitHash} at ${now}`;
 
   const combinedContent = await getUpdatedDescription(octokit, owner, repo, pullNumber, newContent);
 
