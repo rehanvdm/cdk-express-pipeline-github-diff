@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import { DiffSummary, generateMarkdown, getDiffsDir, getSavedDiffs, mergeDiffsFromDir } from '../utils/diff.js';
+import { DiffSummary, generateMarkdown, getDiffsDir, getSavedDiffs } from '../utils/diff.js';
 import * as cache from '@actions/cache';
 import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
 import fs from 'node:fs';
@@ -67,6 +67,7 @@ async function listCachesWithPrefix(token: string, prefix: string) {
 
 async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDiff[]) {
   for (const assemblyDiff of assemblyDiffs) {
+    const savedDir = getDiffsDir(assemblyDiff.directory);
     const pipelineOrderFile = `${assemblyDiff.directory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
     const cacheKeyPrefix = getCacheKey();
     const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix);
@@ -76,41 +77,39 @@ async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDi
     }
 
     // Each generate job caches the same `savedDir` path under a unique key. Restoring
-    // caches sequentially into the same directory causes each restore to overwrite the
-    // previous one, leaving only the last cache's files. Instead, restore every cache
-    // into its own temp directory and then merge the diff JSON files into savedDir.
-    const tempDirs: string[] = [];
-    for (let i = 0; i < caches.length; i++) {
-      const c = caches[i];
-      const tempDir = `${assemblyDiff.directory}/.cache-restore-${i}`;
-      const tempDiffsDir = getDiffsDir(tempDir);
-      const tempPipelineOrderFile = `${tempDir}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
+    // caches sequentially into `savedDir` causes each restore to overwrite the previous
+    // one's files. The fix: after each restore, immediately move the newly-restored diff
+    // files into a staging dir. Once all caches have been restored, move everything from
+    // staging back into savedDir in one pass.
+    //
+    // Note: we must restore into the original `savedDir` path because @actions/cache
+    // matches against the exact paths used during saveCache.
+    const stagingDir = `${assemblyDiff.directory}/.cache-staging`;
+    fs.mkdirSync(stagingDir, { recursive: true });
+    fs.mkdirSync(savedDir, { recursive: true });
+    fs.mkdirSync(path.dirname(pipelineOrderFile), { recursive: true });
 
-      // @actions/cache requires the restore paths to exist on disk before it
-      // can extract into them, otherwise the restore silently fails.
-      fs.mkdirSync(tempDiffsDir, { recursive: true });
-      fs.mkdirSync(path.dirname(tempPipelineOrderFile), { recursive: true });
-
-      const restoredKey = await cache.restoreCache([tempDiffsDir, tempPipelineOrderFile], c.key!);
+    for (const c of caches) {
+      const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);
       if (restoredKey) {
         core.info(
           `Successfully restored CDK Express Pipeline diffs from cache with key: ${c.key!} and id: ${restoredKey}`
         );
-        tempDirs.push(tempDir);
-        // Use the pipeline order file from the first successful restore — it is identical
-        // across all generate jobs for the same assembly directory.
-        if (!fs.existsSync(pipelineOrderFile) && fs.existsSync(tempPipelineOrderFile)) {
-          fs.mkdirSync(path.dirname(pipelineOrderFile), { recursive: true });
-          fs.copyFileSync(tempPipelineOrderFile, pipelineOrderFile);
+        // Move restored files into staging so the next restore starts with a clean savedDir
+        for (const file of fs.readdirSync(savedDir).filter((f) => f.endsWith('.json'))) {
+          fs.renameSync(path.join(savedDir, file), path.join(stagingDir, file));
         }
       } else {
         core.info(`No cached CDK Express Pipeline diffs found with key: ${c.key!}`);
       }
     }
 
-    for (const tempDir of tempDirs) {
-      mergeDiffsFromDir(getDiffsDir(tempDir), assemblyDiff.directory);
-      fs.rmSync(tempDir, { recursive: true, force: true });
+    // Move all accumulated diff files from staging into savedDir
+    if (fs.existsSync(stagingDir)) {
+      for (const file of fs.readdirSync(stagingDir)) {
+        fs.renameSync(path.join(stagingDir, file), path.join(savedDir, file));
+      }
+      fs.rmSync(stagingDir, { recursive: true, force: true });
     }
   }
 }
