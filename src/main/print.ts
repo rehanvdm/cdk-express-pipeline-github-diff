@@ -50,27 +50,46 @@ export async function print(prContext: PrContext) {
   }
 
   const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
-  await restoreCaches(githubToken, assemblyDiffs);
+  await restoreCaches(githubToken, assemblyDiffs, pullNumber);
   await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash);
 }
 
-async function listCachesWithPrefix(token: string, prefix: string) {
+async function listCachesWithPrefix(token: string, prefix: string, pullNumber: number) {
   const octokit = github.getOctokit(token);
+  const ref = `refs/pull/${pullNumber}/head`;
+  const perPage = 100;
+  let page = 1;
+  const allCaches: Awaited<ReturnType<typeof octokit.rest.actions.getActionsCacheList>>['data']['actions_caches'] = [];
 
-  const caches = await octokit.rest.actions.getActionsCacheList({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo
-  });
+  // Paginate through all cache results scoped to the PR ref
+  while (true) {
+    const response = await octokit.rest.actions.getActionsCacheList({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      ref,
+      per_page: perPage,
+      page
+    });
 
-  return caches.data.actions_caches.filter((cache) => cache.key!.startsWith(prefix));
+    allCaches.push(...response.data.actions_caches);
+
+    if (response.data.actions_caches.length < perPage) break;
+    page++;
+    core.info(`Fetched page ${page} of caches, tota slo far: ${allCaches.length}`);
+  }
+
+  return allCaches.filter((c) => c.key!.startsWith(prefix));
 }
 
-async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDiff[]) {
+async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDiff[], pullNumber: number) {
   for (const assemblyDiff of assemblyDiffs) {
     const savedDir = getDiffsDir(assemblyDiff.directory);
     const pipelineOrderFile = `${assemblyDiff.directory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
     const cacheKeyPrefix = getCacheKey();
-    const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix);
+    const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix, pullNumber);
+    core.info(
+      `Found ${caches.length} caches with prefix: ${cacheKeyPrefix} for assembly directory: ${assemblyDiff.directory}`
+    );
     if (caches.length === 0) {
       core.info(`No caches found with prefix: ${cacheKeyPrefix}`);
       return;
