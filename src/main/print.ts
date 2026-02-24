@@ -56,35 +56,52 @@ export async function print(prContext: PrContext) {
 
 async function listCachesWithPrefix(token: string, prefix: string, pullNumber: number) {
   const octokit = github.getOctokit(token);
-  // const ref = `refs/pull/${pullNumber}/head`;
+  const ref = `refs/pull/${pullNumber}/merge`;
   const perPage = 100;
   let page = 1;
   const allCaches: Awaited<ReturnType<typeof octokit.rest.actions.getActionsCacheList>>['data']['actions_caches'] = [];
 
-  core.info(`Listing caches with prefix: ${prefix} for PR #${pullNumber}`);
-  // Paginate through all cache results scoped to the PR ref
+  // Fetch the current workflow run's start time — caches created before this run
+  // cannot have been saved by the generate step, so stop paginating when we hit one.
+  const runId = parseInt(process.env.GITHUB_RUN_ID ?? '0', 10);
+  const { data: runData } = await octokit.rest.actions.getWorkflowRun({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    run_id: runId
+  });
+  const workflowStartedAt = new Date(runData.run_started_at ?? 0);
+  core.info(`Current workflow run started at: ${workflowStartedAt}.`);
+
   while (true) {
     const response = await octokit.rest.actions.getActionsCacheList({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
-      // ref,
+      ref,
       per_page: perPage,
       page
     });
-    core.info(`Response: ${JSON.stringify(response.data)}`);
 
-    allCaches.push(...response.data.actions_caches);
+    const pageCaches = response.data.actions_caches;
 
-    if (response.data.actions_caches.length < perPage) break;
-    page++;
-    core.info(`Fetched page ${page} of caches, tota slo far: ${allCaches.length}`);
-
-    if (page > 10) {
-      break;
+    // The list is ordered newest-first. Stop as soon as we find a cache that predates
+    // the current workflow run, and only keep entries matching the prefix.
+    let reachedOldCache = false;
+    for (const c of pageCaches) {
+      if (c.created_at && new Date(c.created_at) < workflowStartedAt) {
+        reachedOldCache = true;
+        core.info(
+          `Reached cache created at ${c.created_at}, which is before the current workflow run started at ${workflowStartedAt}. Stopping pagination.`
+        );
+        break;
+      }
+      if (c.key!.startsWith(prefix)) allCaches.push(c);
     }
+
+    if (reachedOldCache || pageCaches.length < perPage) break;
+    page++;
   }
 
-  return allCaches.filter((c) => c.key!.startsWith(prefix));
+  return allCaches;
 }
 
 async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDiff[], pullNumber: number) {

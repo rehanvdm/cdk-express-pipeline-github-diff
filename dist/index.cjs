@@ -443108,29 +443108,44 @@ async function print(prContext) {
 }
 async function listCachesWithPrefix(token, prefix2, pullNumber) {
   const octokit = getOctokit(token);
+  const ref = `refs/pull/${pullNumber}/merge`;
   const perPage = 100;
   let page = 1;
   const allCaches = [];
-  info(`Listing caches with prefix: ${prefix2} for PR #${pullNumber}`);
+  const runId = parseInt(process.env.GITHUB_RUN_ID ?? "0", 10);
+  const { data: runData } = await octokit.rest.actions.getWorkflowRun({
+    owner: context2.repo.owner,
+    repo: context2.repo.repo,
+    run_id: runId
+  });
+  const workflowStartedAt = new Date(runData.run_started_at ?? 0);
+  info(`Current workflow run started at: ${workflowStartedAt}.`);
   while (true) {
     const response = await octokit.rest.actions.getActionsCacheList({
       owner: context2.repo.owner,
       repo: context2.repo.repo,
-      // ref,
+      ref,
       per_page: perPage,
       page
     });
-    info(`Response: ${JSON.stringify(response.data)}`);
-    allCaches.push(...response.data.actions_caches);
-    if (response.data.actions_caches.length < perPage)
+    const pageCaches = response.data.actions_caches;
+    let reachedOldCache = false;
+    for (const c6 of pageCaches) {
+      if (c6.created_at && new Date(c6.created_at) < workflowStartedAt) {
+        reachedOldCache = true;
+        info(
+          `Reached cache created at ${c6.created_at}, which is before the current workflow run started at ${workflowStartedAt}. Stopping pagination.`
+        );
+        break;
+      }
+      if (c6.key.startsWith(prefix2))
+        allCaches.push(c6);
+    }
+    if (reachedOldCache || pageCaches.length < perPage)
       break;
     page++;
-    info(`Fetched page ${page} of caches, tota slo far: ${allCaches.length}`);
-    if (page > 10) {
-      break;
-    }
   }
-  return allCaches.filter((c6) => c6.key.startsWith(prefix2));
+  return allCaches;
 }
 async function restoreCaches(githubToken, assemblyDiffs, pullNumber) {
   for (const assemblyDiff of assemblyDiffs) {
