@@ -56,17 +56,18 @@ export async function print(prContext: PrContext) {
 
 async function listCachesWithPrefix(token: string, prefix: string, pullNumber: number) {
   const octokit = github.getOctokit(token);
-  const ref = `refs/pull/${pullNumber}/head`;
+  // const ref = `refs/pull/${pullNumber}/head`;
   const perPage = 100;
   let page = 1;
   const allCaches: Awaited<ReturnType<typeof octokit.rest.actions.getActionsCacheList>>['data']['actions_caches'] = [];
 
+  core.info(`Listing caches with prefix: ${prefix} for PR #${pullNumber}`);
   // Paginate through all cache results scoped to the PR ref
   while (true) {
     const response = await octokit.rest.actions.getActionsCacheList({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
-      ref,
+      // ref,
       per_page: perPage,
       page
     });
@@ -77,6 +78,10 @@ async function listCachesWithPrefix(token: string, prefix: string, pullNumber: n
     if (response.data.actions_caches.length < perPage) break;
     page++;
     core.info(`Fetched page ${page} of caches, tota slo far: ${allCaches.length}`);
+
+    if (page > 10) {
+      break;
+    }
   }
 
   return allCaches.filter((c) => c.key!.startsWith(prefix));
