@@ -16,13 +16,21 @@ export function getCacheKey(stackSelector?: string, cloudAssemblyDirectory?: str
   return ret;
 }
 
+/**
+ * Returns unique (hashed) directory paths used when saving/restoring cache artifacts.
+ * The hashed paths are siblings of the canonical paths (not children) so that copying
+ * between them does not produce a self-copy error.
+ *
+ * e.g. canonical:  cdk.out/cdk-express-pipeline/diffs
+ *      hashed:     cdk.out/cdk-express-pipeline/diffs-<hash>
+ */
 export function getHashedCachePaths(
   savedDir: string,
   pipelineOrderFile: string,
   hash: string
 ): { hashedSavedDir: string; hashedPipelineOrderFile: string } {
   return {
-    hashedSavedDir: `${savedDir}/${hash}`,
+    hashedSavedDir: `${savedDir}-${hash}`,
     hashedPipelineOrderFile: `${pipelineOrderFile}.${hash}`
   };
 }

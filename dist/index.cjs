@@ -440309,7 +440309,7 @@ function getCacheKey(stackSelector, cloudAssemblyDirectory) {
 }
 function getHashedCachePaths(savedDir, pipelineOrderFile, hash) {
   return {
-    hashedSavedDir: `${savedDir}/${hash}`,
+    hashedSavedDir: `${savedDir}-${hash}`,
     hashedPipelineOrderFile: `${pipelineOrderFile}.${hash}`
   };
 }
