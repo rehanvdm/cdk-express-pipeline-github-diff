@@ -5,7 +5,9 @@ import {
   extractStackDiffOutput,
   generateDiffs,
   generateMarkdown,
+  getDiffsDir,
   getSavedDiffs,
+  mergeDiffsFromDir,
   saveDiffs
 } from '../src/utils/diff';
 import { DiffMethod, ExpandStackSelection, StackSelectionStrategy, Toolkit } from '@aws-cdk/toolkit-lib';
@@ -480,5 +482,68 @@ describe('diff.ts', () => {
     const markdown = generateMarkdown(shortHandOrder, allStackDiffs);
 
     expect(markdown).toMatchSnapshot();
+  });
+});
+
+describe('mergeDiffsFromDir', () => {
+  const tmpBase = path.join(__dirname, 'fixtures', 'merge-test');
+
+  beforeEach(() => {
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpBase, { recursive: true, force: true });
+  });
+
+  it('merges JSON files from multiple source directories into the target diffs directory', () => {
+    const outputDir = path.join(tmpBase, 'output');
+    const src1 = getDiffsDir(path.join(tmpBase, 'cache-0'));
+    const src2 = getDiffsDir(path.join(tmpBase, 'cache-1'));
+
+    // Simulate two separate cache restores, each containing different stack diff files
+    fs.mkdirSync(src1, { recursive: true });
+    fs.mkdirSync(src2, { recursive: true });
+    fs.writeFileSync(path.join(src1, 'wave1_stage1_stack-a.json'), JSON.stringify({ stack: 'a' }));
+    fs.writeFileSync(path.join(src2, 'wave1_stage2_stack-b.json'), JSON.stringify({ stack: 'b' }));
+
+    mergeDiffsFromDir(src1, outputDir);
+    mergeDiffsFromDir(src2, outputDir);
+
+    const targetDir = getDiffsDir(outputDir);
+    const files = fs.readdirSync(targetDir);
+    expect(files).toContain('wave1_stage1_stack-a.json');
+    expect(files).toContain('wave1_stage2_stack-b.json');
+    expect(JSON.parse(fs.readFileSync(path.join(targetDir, 'wave1_stage1_stack-a.json'), 'utf-8'))).toEqual({
+      stack: 'a'
+    });
+    expect(JSON.parse(fs.readFileSync(path.join(targetDir, 'wave1_stage2_stack-b.json'), 'utf-8'))).toEqual({
+      stack: 'b'
+    });
+  });
+
+  it('does nothing when source directory does not exist', () => {
+    const outputDir = path.join(tmpBase, 'output');
+    const nonExistent = path.join(tmpBase, 'does-not-exist', 'cdk-express-pipeline', 'diffs');
+
+    // Should not throw
+    expect(() => mergeDiffsFromDir(nonExistent, outputDir)).not.toThrow();
+    expect(fs.existsSync(getDiffsDir(outputDir))).toBe(false);
+  });
+
+  it('skips non-JSON files in the source directory', () => {
+    const outputDir = path.join(tmpBase, 'output');
+    const src = getDiffsDir(path.join(tmpBase, 'cache-0'));
+
+    fs.mkdirSync(src, { recursive: true });
+    fs.writeFileSync(path.join(src, 'stack-a.json'), JSON.stringify({ stack: 'a' }));
+    fs.writeFileSync(path.join(src, 'README.txt'), 'not a diff');
+
+    mergeDiffsFromDir(src, outputDir);
+
+    const targetDir = getDiffsDir(outputDir);
+    const files = fs.readdirSync(targetDir);
+    expect(files).toContain('stack-a.json');
+    expect(files).not.toContain('README.txt');
   });
 });

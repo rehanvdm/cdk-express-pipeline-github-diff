@@ -1,5 +1,6 @@
 import { ResourceDifference, type TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import * as fs from 'node:fs';
+import path from 'node:path';
 import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
 import { minimatch } from 'minimatch';
 
@@ -115,6 +116,27 @@ export function getSavedDiffs(outputDir: string) {
     combinedDiff.stacks[stackId] = stackDiff;
   }
   return combinedDiff;
+}
+
+/**
+ * Copies all `.json` diff files from `sourceDir` into `getDiffsDir(outputDir)`,
+ * creating the target directory if it doesn't exist. Used to merge per-cache
+ * restore directories into the final diffs directory without overwriting files
+ * from previously processed caches.
+ */
+export function mergeDiffsFromDir(sourceDir: string, outputDir: string) {
+  if (!fs.existsSync(sourceDir)) {
+    return;
+  }
+  const targetDir = getDiffsDir(outputDir);
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+  for (const file of fs.readdirSync(sourceDir)) {
+    if (file.endsWith('.json')) {
+      fs.copyFileSync(path.join(sourceDir, file), path.join(targetDir, file));
+    }
+  }
 }
 
 export function generateMarkdown(order: CdkExpressPipelineAssembly, diffResult: DiffResult) {

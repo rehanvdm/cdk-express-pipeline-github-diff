@@ -1,5 +1,5 @@
 import * as core from '@actions/core';
-import { DiffSummary, generateMarkdown, getDiffsDir, getSavedDiffs } from '../utils/diff.js';
+import { DiffSummary, generateMarkdown, getDiffsDir, getSavedDiffs, mergeDiffsFromDir } from '../utils/diff.js';
 import * as cache from '@actions/cache';
 import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
 import fs from 'node:fs';
@@ -67,23 +67,44 @@ async function listCachesWithPrefix(token: string, prefix: string) {
 
 async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDiff[]) {
   for (const assemblyDiff of assemblyDiffs) {
-    const savedDir = getDiffsDir(assemblyDiff.directory);
     const pipelineOrderFile = `${assemblyDiff.directory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
     const cacheKeyPrefix = getCacheKey();
     const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix);
     if (caches.length === 0) {
       core.info(`No caches found with prefix: ${cacheKeyPrefix}`);
-      return;
+      continue;
     }
-    for (const c of caches) {
-      const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);
+
+    // Each generate job caches the same `savedDir` path under a unique key. Restoring
+    // caches sequentially into the same directory causes each restore to overwrite the
+    // previous one, leaving only the last cache's files. Instead, restore every cache
+    // into its own temp directory and then merge the diff JSON files into savedDir.
+    const tempDirs: string[] = [];
+    for (let i = 0; i < caches.length; i++) {
+      const c = caches[i];
+      const tempDir = `${assemblyDiff.directory}/.cache-restore-${i}`;
+      const tempDiffsDir = getDiffsDir(tempDir);
+      const tempPipelineOrderFile = `${tempDir}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
+      const restoredKey = await cache.restoreCache([tempDiffsDir, tempPipelineOrderFile], c.key!);
       if (restoredKey) {
         core.info(
           `Successfully restored CDK Express Pipeline diffs from cache with key: ${c.key!} and id: ${restoredKey}`
         );
+        tempDirs.push(tempDir);
+        // Use the pipeline order file from the first successful restore — it is identical
+        // across all generate jobs for the same assembly directory.
+        if (!fs.existsSync(pipelineOrderFile) && fs.existsSync(tempPipelineOrderFile)) {
+          fs.mkdirSync(path.dirname(pipelineOrderFile), { recursive: true });
+          fs.copyFileSync(tempPipelineOrderFile, pipelineOrderFile);
+        }
       } else {
         core.info(`No cached CDK Express Pipeline diffs found with key: ${c.key!}`);
       }
+    }
+
+    for (const tempDir of tempDirs) {
+      mergeDiffsFromDir(getDiffsDir(tempDir), assemblyDiff.directory);
+      fs.rmSync(tempDir, { recursive: true, force: true });
     }
   }
 }
