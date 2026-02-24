@@ -137,6 +137,9 @@ async function generateJsonDiffsAndCache(
   fs.copyFileSync(pipelineOrderFile, hashedPipelineOrderFile);
 
   const cacheKey = getCacheKey(stackSelectors, cloudAssemblyDirectory);
+  core.info(
+    `Attempting to save cache with key: ${cacheKey} (hash: ${hash}) for paths: ${hashedSavedDir}, ${hashedPipelineOrderFile}`
+  );
   const savedKey = await cache.saveCache([hashedSavedDir, hashedPipelineOrderFile], cacheKey);
   core.info(`Successfully cached CDK Express Pipeline diffs with key: ${cacheKey} and id: ${savedKey}`);
 }

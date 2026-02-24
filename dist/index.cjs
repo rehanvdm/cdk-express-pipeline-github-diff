@@ -443076,6 +443076,9 @@ async function generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAss
   import_node_fs2.default.cpSync(savedDir, hashedSavedDir, { recursive: true });
   import_node_fs2.default.copyFileSync(pipelineOrderFile, hashedPipelineOrderFile);
   const cacheKey = getCacheKey(stackSelectors, cloudAssemblyDirectory);
+  info(
+    `Attempting to save cache with key: ${cacheKey} (hash: ${hash}) for paths: ${hashedSavedDir}, ${hashedPipelineOrderFile}`
+  );
   const savedKey = await saveCache2([hashedSavedDir, hashedPipelineOrderFile], cacheKey);
   info(`Successfully cached CDK Express Pipeline diffs with key: ${cacheKey} and id: ${savedKey}`);
 }
@@ -443167,11 +443170,12 @@ async function restoreCaches(githubToken, assemblyDiffs) {
     }
     import_node_fs3.default.mkdirSync(savedDir, { recursive: true });
     import_node_fs3.default.mkdirSync(import_node_path.default.dirname(pipelineOrderFile), { recursive: true });
+    info(`NEW VERSION: 6`);
     for (const c6 of caches) {
       const hash = c6.key.substring(cacheKeyPrefix.length);
-      debug(`Attempting to restore cache with key: ${c6.key} (hash: ${hash})`);
+      info(`Attempting to restore cache with key: ${c6.key} (hash: ${hash})`);
       const { hashedSavedDir, hashedPipelineOrderFile } = getHashedCachePaths(savedDir, pipelineOrderFile, hash);
-      debug(`Looking for cached paths: ${hashedSavedDir}, ${hashedPipelineOrderFile}`);
+      info(`Looking for cached paths: ${hashedSavedDir}, ${hashedPipelineOrderFile}`);
       const restoredKey = await restoreCache([hashedSavedDir, hashedPipelineOrderFile], c6.key);
       if (!restoredKey) {
         info(`No cached CDK Express Pipeline diffs found with key: ${c6.key}`);
@@ -443179,11 +443183,11 @@ async function restoreCaches(githubToken, assemblyDiffs) {
       }
       info(`Successfully restored CDK Express Pipeline diffs from cache with key: ${c6.key}`);
       if (import_node_fs3.default.existsSync(hashedSavedDir)) {
-        debug(`Copying cached diffs from ${hashedSavedDir} into ${savedDir}`);
+        info(`Copying cached diffs from ${hashedSavedDir} into ${savedDir}`);
         import_node_fs3.default.cpSync(hashedSavedDir, savedDir, { recursive: true });
       }
       if (import_node_fs3.default.existsSync(hashedPipelineOrderFile)) {
-        debug(`Copying cached pipeline order file from ${hashedPipelineOrderFile} into ${pipelineOrderFile}`);
+        info(`Copying cached pipeline order file from ${hashedPipelineOrderFile} into ${pipelineOrderFile}`);
         import_node_fs3.default.copyFileSync(hashedPipelineOrderFile, pipelineOrderFile);
       }
     }
