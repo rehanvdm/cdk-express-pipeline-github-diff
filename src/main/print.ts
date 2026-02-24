@@ -76,28 +76,13 @@ async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDi
       return;
     }
     for (const c of caches) {
-      const maxAttempts = 10;
-      const retryDelayMs = 2000;
-      let restoredKey: string | undefined;
-
-      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-        restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);
-        if (restoredKey) break;
-
-        if (attempt < maxAttempts) {
-          core.info(
-            `Attempt ${attempt}/${maxAttempts}: Cache not yet available for key: ${c.key!}. Retrying in ${retryDelayMs / 1000}s...`
-          );
-          await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
-        }
-      }
-
+      const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);
       if (restoredKey) {
         core.info(
           `Successfully restored CDK Express Pipeline diffs from cache with key: ${c.key!} and id: ${restoredKey}`
         );
       } else {
-        core.info(`No cached CDK Express Pipeline diffs found with key: ${c.key!} after ${maxAttempts} attempts`);
+        core.info(`No cached CDK Express Pipeline diffs found with key: ${c.key!}`);
       }
     }
   }
