@@ -92,7 +92,7 @@ async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDi
     );
     if (caches.length === 0) {
       core.info(`No caches found with prefix: ${cacheKeyPrefix}`);
-      return;
+      continue;
     }
     for (const c of caches) {
       const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);
