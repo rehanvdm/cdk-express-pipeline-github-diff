@@ -70,6 +70,7 @@ async function listCachesWithPrefix(token: string, prefix: string, pullNumber: n
       per_page: perPage,
       page
     });
+    core.info(`Response: ${JSON.stringify(response.data)}`);
 
     allCaches.push(...response.data.actions_caches);
 

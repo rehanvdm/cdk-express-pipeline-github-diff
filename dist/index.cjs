@@ -443120,6 +443120,7 @@ async function listCachesWithPrefix(token, prefix2, pullNumber) {
       per_page: perPage,
       page
     });
+    info(`Response: ${JSON.stringify(response.data)}`);
     allCaches.push(...response.data.actions_caches);
     if (response.data.actions_caches.length < perPage)
       break;
@@ -443139,7 +443140,7 @@ async function restoreCaches(githubToken, assemblyDiffs, pullNumber) {
     );
     if (caches.length === 0) {
       info(`No caches found with prefix: ${cacheKeyPrefix}`);
-      return;
+      continue;
     }
     for (const c6 of caches) {
       const restoredKey = await restoreCache([savedDir, pipelineOrderFile], c6.key);
