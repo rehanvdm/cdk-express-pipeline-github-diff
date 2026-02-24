@@ -5,9 +5,10 @@ import { getNowFormated, setGeneratingPrDescription } from '../utils/output.js';
 import { DiffRule, generateDiffs, getDiffsDir, saveDiffs } from '../utils/diff.js';
 import * as cache from '@actions/cache';
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
-import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey } from '../utils/shared.js';
+import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheHash, getCacheKey, getHashedCachePaths } from '../utils/shared.js';
 import * as jsYaml from 'js-yaml';
 import { PrContext } from './index.js';
+import fs from 'node:fs';
 
 export async function generate(prContext: PrContext) {
   const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: false }) || 'cdk.out';
@@ -128,8 +129,15 @@ async function generateJsonDiffsAndCache(
 
   const savedDir = getDiffsDir(cloudAssemblyDirectory);
   const pipelineOrderFile = `${cloudAssemblyDirectory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
+  const hash = getCacheHash(stackSelectors, cloudAssemblyDirectory);
+  const { hashedSavedDir, hashedPipelineOrderFile } = getHashedCachePaths(savedDir, pipelineOrderFile, hash);
+
+  // Copy diffs into the hashed subdirectory so parallel generate jobs don't overwrite each other's cache artifacts
+  fs.cpSync(savedDir, hashedSavedDir, { recursive: true });
+  fs.copyFileSync(pipelineOrderFile, hashedPipelineOrderFile);
+
   const cacheKey = getCacheKey(stackSelectors, cloudAssemblyDirectory);
-  const savedKey = await cache.saveCache([savedDir, pipelineOrderFile], cacheKey);
+  const savedKey = await cache.saveCache([hashedSavedDir, hashedPipelineOrderFile], cacheKey);
   core.info(`Successfully cached CDK Express Pipeline diffs with key: ${cacheKey} and id: ${savedKey}`);
 }
 

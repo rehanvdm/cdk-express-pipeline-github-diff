@@ -5,7 +5,7 @@ import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
 import fs from 'node:fs';
 import path from 'node:path';
 import { AssemblyDiff, updateGithubPrDescription } from '../utils/output.js';
-import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey } from '../utils/shared.js';
+import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey, getHashedCachePaths } from '../utils/shared.js';
 import * as jsYaml from 'js-yaml';
 import * as github from '@actions/github';
 import { PrContext } from './index.js';
@@ -76,40 +76,30 @@ async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDi
       continue;
     }
 
-    // Each generate job caches the same `savedDir` path under a unique key. Restoring
-    // caches sequentially into `savedDir` causes each restore to overwrite the previous
-    // one's files. The fix: after each restore, immediately move the newly-restored diff
-    // files into a staging dir. Once all caches have been restored, move everything from
-    // staging back into savedDir in one pass.
-    //
-    // Note: we must restore into the original `savedDir` path because @actions/cache
-    // matches against the exact paths used during saveCache.
-    const stagingDir = `${assemblyDiff.directory}/.cache-staging`;
-    fs.mkdirSync(stagingDir, { recursive: true });
     fs.mkdirSync(savedDir, { recursive: true });
     fs.mkdirSync(path.dirname(pipelineOrderFile), { recursive: true });
-
     for (const c of caches) {
-      const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);
-      if (restoredKey) {
-        core.info(
-          `Successfully restored CDK Express Pipeline diffs from cache with key: ${c.key!} and id: ${restoredKey}`
-        );
-        // Move restored files into staging so the next restore starts with a clean savedDir
-        for (const file of fs.readdirSync(savedDir).filter((f) => f.endsWith('.json'))) {
-          fs.renameSync(path.join(savedDir, file), path.join(stagingDir, file));
-        }
-      } else {
+      // Extract the hash that was appended to the cache key (everything after the last '-')
+      const hash = c.key!.substring(cacheKeyPrefix.length);
+      core.debug(`Attempting to restore cache with key: ${c.key!} (hash: ${hash})`);
+      const { hashedSavedDir, hashedPipelineOrderFile } = getHashedCachePaths(savedDir, pipelineOrderFile, hash);
+      core.debug(`Looking for cached paths: ${hashedSavedDir}, ${hashedPipelineOrderFile}`);
+      const restoredKey = await cache.restoreCache([hashedSavedDir, hashedPipelineOrderFile], c.key!);
+      if (!restoredKey) {
         core.info(`No cached CDK Express Pipeline diffs found with key: ${c.key!}`);
+        continue;
       }
-    }
+      core.info(`Successfully restored CDK Express Pipeline diffs from cache with key: ${c.key!}`);
 
-    // Move all accumulated diff files from staging into savedDir
-    if (fs.existsSync(stagingDir)) {
-      for (const file of fs.readdirSync(stagingDir)) {
-        fs.renameSync(path.join(stagingDir, file), path.join(savedDir, file));
+      // Merge hashed diffs dir into the single target savedDir (last writer wins for the pipeline order file)
+      if (fs.existsSync(hashedSavedDir)) {
+        core.debug(`Copying cached diffs from ${hashedSavedDir} into ${savedDir}`);
+        fs.cpSync(hashedSavedDir, savedDir, { recursive: true });
       }
-      fs.rmSync(stagingDir, { recursive: true, force: true });
+      if (fs.existsSync(hashedPipelineOrderFile)) {
+        core.debug(`Copying cached pipeline order file from ${hashedPipelineOrderFile} into ${pipelineOrderFile}`);
+        fs.copyFileSync(hashedPipelineOrderFile, pipelineOrderFile);
+      }
     }
   }
 }
