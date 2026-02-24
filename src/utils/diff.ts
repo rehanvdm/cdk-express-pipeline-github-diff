@@ -109,6 +109,9 @@ export function saveDiffs(diffResult: DiffResult, outputDir: string) {
 export function getSavedDiffs(outputDir: string) {
   const combinedDiff: DiffResult = { stacks: {} };
   const diffsDir = getDiffsDir(outputDir);
+  if (!fs.existsSync(diffsDir)) {
+    return combinedDiff;
+  }
   const files = fs.readdirSync(diffsDir);
   for (const file of files) {
     const stackId = file.replace('.json', '');

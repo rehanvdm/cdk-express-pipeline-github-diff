@@ -408095,6 +408095,9 @@ function saveDiffs(diffResult, outputDir) {
 function getSavedDiffs(outputDir) {
   const combinedDiff = { stacks: {} };
   const diffsDir = getDiffsDir(outputDir);
+  if (!fs2.existsSync(diffsDir)) {
+    return combinedDiff;
+  }
   const files = fs2.readdirSync(diffsDir);
   for (const file of files) {
     const stackId = file.replace(".json", "");
@@ -443168,6 +443171,8 @@ async function restoreCaches(githubToken, assemblyDiffs) {
       const tempDir = `${assemblyDiff.directory}/.cache-restore-${i6}`;
       const tempDiffsDir = getDiffsDir(tempDir);
       const tempPipelineOrderFile = `${tempDir}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
+      import_node_fs2.default.mkdirSync(tempDiffsDir, { recursive: true });
+      import_node_fs2.default.mkdirSync(import_node_path2.default.dirname(tempPipelineOrderFile), { recursive: true });
       const restoredKey = await restoreCache([tempDiffsDir, tempPipelineOrderFile], c6.key);
       if (restoredKey) {
         info(

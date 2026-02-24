@@ -85,6 +85,12 @@ async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDi
       const tempDir = `${assemblyDiff.directory}/.cache-restore-${i}`;
       const tempDiffsDir = getDiffsDir(tempDir);
       const tempPipelineOrderFile = `${tempDir}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
+
+      // @actions/cache requires the restore paths to exist on disk before it
+      // can extract into them, otherwise the restore silently fails.
+      fs.mkdirSync(tempDiffsDir, { recursive: true });
+      fs.mkdirSync(path.dirname(tempPipelineOrderFile), { recursive: true });
+
       const restoredKey = await cache.restoreCache([tempDiffsDir, tempPipelineOrderFile], c.key!);
       if (restoredKey) {
         core.info(
