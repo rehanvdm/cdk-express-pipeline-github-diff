@@ -443152,6 +443152,7 @@ async function restoreCaches(githubToken, assemblyDiffs) {
       continue;
     }
     const stagingDir = `${assemblyDiff.directory}/.cache-staging`;
+    import_node_fs2.default.mkdirSync(stagingDir, { recursive: true });
     import_node_fs2.default.mkdirSync(savedDir, { recursive: true });
     import_node_fs2.default.mkdirSync(import_node_path.default.dirname(pipelineOrderFile), { recursive: true });
     for (const c6 of caches) {
@@ -443160,7 +443161,6 @@ async function restoreCaches(githubToken, assemblyDiffs) {
         info(
           `Successfully restored CDK Express Pipeline diffs from cache with key: ${c6.key} and id: ${restoredKey}`
         );
-        import_node_fs2.default.mkdirSync(stagingDir, { recursive: true });
         for (const file of import_node_fs2.default.readdirSync(savedDir).filter((f6) => f6.endsWith(".json"))) {
           import_node_fs2.default.renameSync(import_node_path.default.join(savedDir, file), import_node_path.default.join(stagingDir, file));
         }
