@@ -108,7 +108,7 @@ async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDi
   for (const assemblyDiff of assemblyDiffs) {
     const savedDir = getDiffsDir(assemblyDiff.directory);
     const pipelineOrderFile = `${assemblyDiff.directory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
-    const cacheKeyPrefix = getCacheKey();
+    const cacheKeyPrefix = getCacheKey(assemblyDiff.directory);
     const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix, pullNumber);
     core.info(
       `Found ${caches.length} caches with prefix: ${cacheKeyPrefix} for assembly directory: ${assemblyDiff.directory}`

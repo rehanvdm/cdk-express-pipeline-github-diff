@@ -440270,10 +440270,11 @@ function saveCacheV2(paths_1, key_1, options_1) {
 // src/utils/shared.ts
 var import_crypto37 = require("crypto");
 var CDK_EXPRESS_PIPELINE_JSON_FILE = "cdk-express-pipeline.json";
-function getCacheKey(stackSelector, cloudAssemblyDirectory) {
+function getCacheKey(cloudAssemblyDirectory, stackSelector) {
   let ret = `cdk-diff-pipeline-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}-`;
+  ret += (0, import_crypto37.createHash)("md5").update(cloudAssemblyDirectory).digest("hex") + "-";
   if (stackSelector) {
-    ret += (0, import_crypto37.createHash)("md5").update(stackSelector + cloudAssemblyDirectory).digest("hex");
+    ret += (0, import_crypto37.createHash)("md5").update(stackSelector).digest("hex") + "-";
   }
   return ret;
 }
@@ -443034,7 +443035,7 @@ async function generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAss
   info("Successfully generated CDK Express Pipeline diffs");
   const savedDir = getDiffsDir(cloudAssemblyDirectory);
   const pipelineOrderFile = `${cloudAssemblyDirectory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
-  const cacheKey = getCacheKey(stackSelectors, cloudAssemblyDirectory);
+  const cacheKey = getCacheKey(cloudAssemblyDirectory, stackSelectors);
   const savedKey = await saveCache2([savedDir, pipelineOrderFile], cacheKey);
   info(`Successfully cached CDK Express Pipeline diffs with key: ${cacheKey} and id: ${savedKey}`);
 }
@@ -443151,7 +443152,7 @@ async function restoreCaches(githubToken, assemblyDiffs, pullNumber) {
   for (const assemblyDiff of assemblyDiffs) {
     const savedDir = getDiffsDir(assemblyDiff.directory);
     const pipelineOrderFile = `${assemblyDiff.directory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
-    const cacheKeyPrefix = getCacheKey();
+    const cacheKeyPrefix = getCacheKey(assemblyDiff.directory);
     const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix, pullNumber);
     info(
       `Found ${caches.length} caches with prefix: ${cacheKeyPrefix} for assembly directory: ${assemblyDiff.directory}`
