@@ -483,6 +483,93 @@ describe('diff.ts', () => {
 
     expect(markdown).toMatchSnapshot();
   });
+
+  it('test combined lambda rules - hide VERSION env var, code changes, and hide lambda if empty', async () => {
+    const cdkOut = path.join(__dirname, 'fixtures', 'cdk.out', 'testLambdaRules');
+
+    function testAssemblyForLambdaRules(opts?: AssemblyDiffFuncArgs): AssemblyDiff {
+      if (opts?.outputDir) {
+        process.env.CDK_OUTDIR = opts?.outputDir;
+      }
+      const app = new cdk.App({ outdir: opts?.outputDir });
+      const expressPipeline = new CdkExpressPipeline();
+      const wave1 = expressPipeline.addWave('wave1');
+      const wave1stage1 = wave1.addStage('stage1');
+      const stackA = new ExpressStack(app, 'stack-a', wave1stage1, { stackName: 'StackA' });
+
+      if (!opts?.withChange) {
+        new lambda.Function(stackA, 'LambdaCodeAndVersion', {
+          runtime: lambda.Runtime.NODEJS_24_X,
+          handler: 'index.handler',
+          code: lambda.Code.fromInline('original code'),
+          environment: { VERSION: '1.0.0' }
+        });
+        new lambda.Function(stackA, 'LambdaVersion', {
+          runtime: lambda.Runtime.NODEJS_24_X,
+          handler: 'index.handler',
+          code: lambda.Code.fromInline('original code'),
+          environment: { VERSION: '1.0.0' }
+        });
+        new lambda.Function(stackA, 'LambdaWithOtherChanges', {
+          runtime: lambda.Runtime.NODEJS_24_X,
+          handler: 'index.handler',
+          code: lambda.Code.fromInline('original code'),
+          memorySize: 256
+        });
+      } else {
+        new lambda.Function(stackA, 'LambdaCodeAndVersion', {
+          runtime: lambda.Runtime.NODEJS_24_X,
+          handler: 'index.handler',
+          code: lambda.Code.fromInline('changed code'),
+          environment: { VERSION: '2.0.0' }
+        });
+        new lambda.Function(stackA, 'LambdaVersion', {
+          runtime: lambda.Runtime.NODEJS_24_X,
+          handler: 'index.handler',
+          code: lambda.Code.fromInline('original code'),
+          environment: { VERSION: '2.0.0' }
+        });
+        new lambda.Function(stackA, 'LambdaWithOtherChanges', {
+          runtime: lambda.Runtime.NODEJS_24_X,
+          handler: 'index.handler',
+          code: lambda.Code.fromInline('changed code'),
+          memorySize: 512
+        });
+      }
+
+      expressPipeline.synth([wave1], false, {});
+      process.env.CDK_OUTDIR = undefined;
+      return { assembly: app.synth() };
+    }
+
+    const testDiffRes = await generateTemplateDiffs(testAssemblyForLambdaRules, cdkOut);
+    const shortHandOrder: CdkExpressPipelineAssembly = JSON.parse(
+      fs.readFileSync(path.join(cdkOut, CDK_EXPRESS_PIPELINE_JSON_FILE), 'utf-8')
+    );
+
+    const rules: DiffRule[] = [
+      {
+        name: 'hide-dd-tags',
+        type: 'HIDE_PROPERTIES',
+        path: 'AWS::Lambda::Function.*.Environment.Variables.VERSION'
+      },
+      {
+        name: 'hide-code-changes',
+        type: 'HIDE_PROPERTIES',
+        path: 'AWS::Lambda::Function.*.Code.*'
+      },
+      {
+        name: 'hide-lambda-if-all-changes-are-hidden',
+        type: 'HIDE_RESOURCE_IF_EMPTY',
+        path: 'AWS::Lambda::Function.*'
+      }
+    ];
+
+    const stackDiffs = await generateDiffs(testDiffRes.templateDiffs, testDiffRes.cdkDiffOutput, rules);
+    expect(stackDiffs).toBeDefined();
+    const markdown = generateMarkdown(shortHandOrder, stackDiffs!);
+    expect(markdown).toMatchSnapshot();
+  });
 });
 
 describe('mergeDiffsFromDir', () => {

@@ -1,5 +1,19 @@
 // Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
 
+exports[`diff.ts test combined lambda rules - hide VERSION env var, code changes, and hide lambda if empty 1`] = `
+"\`\`\`diff
+🌊 wave1
+  🏗 stage1
+    📦 StackA (wave1_stage1_stack-a)
+!      {Applied Resource Diff Rules: hide-lambda-if-all-changes-are-hidden(2)}
+!      [~] AWS::Lambda::Function LambdaWithOtherChanges LambdaWithOtherChanges05F1C435 {Applied Property Diff Rules: hide-code-changes(3)}
+!       └─ [~] MemorySize
+!           ├─ [-] 256
+!           └─ [+] 512
+\`\`\`
+"
+`;
+
 exports[`diff.ts test complex diff markdown - diff rules: HIDE_RESOURCE_IF_EMPTY - all properties hidden by HIDE_PROPERTIES, resources hidden 1`] = `
 "\`\`\`diff
 🌊 wave1

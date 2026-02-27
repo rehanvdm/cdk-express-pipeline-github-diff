@@ -428,7 +428,9 @@ export function extractStackDiffOutput(
   // all child lines are already hidden (by other rules or the empty-property pass). If so, hide the
   // resource header too.
   const hideIfEmptyRules = diffRules.filter((r) => r.type === 'HIDE_RESOURCE_IF_EMPTY');
+  console.log('hideIfEmptyRules', hideIfEmptyRules);
   if (hideIfEmptyRules.length > 0) {
+    console.log('diffLinesOutput before HIDE_RESOURCE_IF_EMPTY processing:');
     for (let i = 0; i < diffLinesOutput.length; i++) {
       const line = diffLinesOutput[i];
       if (line.type !== 'Resource' || !line.show || line.resourceSign !== '~') continue;
@@ -436,6 +438,9 @@ export function extractStackDiffOutput(
       // The line.path for a Resource is already "ResourceType.ResourceId" with / escaped to _ from the
       // so it can be used directly for rule matching.
       const matchedRules = hideIfEmptyRules.filter((r) => minimatch(line.path, r.path));
+      console.log(
+        `Evaluating HIDE_RESOURCE_IF_EMPTY for resource at line ${i} with path ${line.path}. Matched rules: ${JSON.stringify(matchedRules)}`
+      );
       if (matchedRules.length === 0) continue;
 
       let hasVisibleChildren = false;
