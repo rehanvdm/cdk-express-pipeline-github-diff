@@ -1,5 +1,6 @@
 import { ResourceDifference, type TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import * as fs from 'node:fs';
+import path from 'node:path';
 import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
 import { minimatch } from 'minimatch';
 
@@ -58,8 +59,11 @@ export type DiffRule = {
   /**
    * HIDE_RESOURCE: Hides the entire resource diff if any property changes match the path
    * HIDE_PROPERTIES: Hides only the property changes that match the path, but shows the resource and other property changes
+   * HIDE_RESOURCE_IF_EMPTY: Does not hide any properties itself. After all other rules have run, if
+   *   the matched resource has no visible children remaining, hides the resource header too. Combine
+   *   with HIDE_PROPERTIES rules to suppress both properties and the now-empty resource header.
    */
-  type: 'HIDE_RESOURCE' | 'HIDE_PROPERTIES';
+  type: 'HIDE_RESOURCE' | 'HIDE_PROPERTIES' | 'HIDE_RESOURCE_IF_EMPTY';
 
   /**
    * A glob pattern to match on the path: "ResourceName.ResourceId.Property.NestedProperty.NestedProperty...."
@@ -105,6 +109,9 @@ export function saveDiffs(diffResult: DiffResult, outputDir: string) {
 export function getSavedDiffs(outputDir: string) {
   const combinedDiff: DiffResult = { stacks: {} };
   const diffsDir = getDiffsDir(outputDir);
+  if (!fs.existsSync(diffsDir)) {
+    return combinedDiff;
+  }
   const files = fs.readdirSync(diffsDir);
   for (const file of files) {
     const stackId = file.replace('.json', '');
@@ -112,6 +119,27 @@ export function getSavedDiffs(outputDir: string) {
     combinedDiff.stacks[stackId] = stackDiff;
   }
   return combinedDiff;
+}
+
+/**
+ * Copies all `.json` diff files from `sourceDir` into `getDiffsDir(outputDir)`,
+ * creating the target directory if it doesn't exist. Used to merge per-cache
+ * restore directories into the final diffs directory without overwriting files
+ * from previously processed caches.
+ */
+export function mergeDiffsFromDir(sourceDir: string, outputDir: string) {
+  if (!fs.existsSync(sourceDir)) {
+    return;
+  }
+  const targetDir = getDiffsDir(outputDir);
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+  }
+  for (const file of fs.readdirSync(sourceDir)) {
+    if (file.endsWith('.json')) {
+      fs.copyFileSync(path.join(sourceDir, file), path.join(targetDir, file));
+    }
+  }
 }
 
 export function generateMarkdown(order: CdkExpressPipelineAssembly, diffResult: DiffResult) {
@@ -342,6 +370,9 @@ export function extractStackDiffOutput(
             show = false;
           }
         }
+        // HIDE_RESOURCE_IF_EMPTY is intentionally not handled here — it does not hide individual
+        // property lines. It is evaluated as a post-processing step after all other rules and the
+        // empty-property cleanup have run.
       }
     }
 
@@ -388,6 +419,37 @@ export function extractStackDiffOutput(
           diffLinesOutput[i].show = false;
           changesWereMade = true;
         }
+      }
+    }
+  }
+
+  // After all other rules and the empty-property cleanup, evaluate HIDE_RESOURCE_IF_EMPTY rules.
+  // For each visible (~) resource whose path matches a HIDE_RESOURCE_IF_EMPTY rule, check whether
+  // all child lines are already hidden (by other rules or the empty-property pass). If so, hide the
+  // resource header too.
+  const hideIfEmptyRules = diffRules.filter((r) => r.type === 'HIDE_RESOURCE_IF_EMPTY');
+  if (hideIfEmptyRules.length > 0) {
+    for (let i = 0; i < diffLinesOutput.length; i++) {
+      const line = diffLinesOutput[i];
+      if (line.type !== 'Resource' || !line.show || line.resourceSign !== '~') continue;
+
+      // The line.path for a Resource is already "ResourceType.ResourceId" with / escaped to _ from the
+      // so it can be used directly for rule matching.
+      const matchedRules = hideIfEmptyRules.filter((r) => minimatch(line.path, r.path));
+      if (matchedRules.length === 0) continue;
+
+      let hasVisibleChildren = false;
+      for (let j = i + 1; j < diffLinesOutput.length; j++) {
+        if (diffLinesOutput[j].type === 'Resource') break;
+        if (diffLinesOutput[j].show) {
+          hasVisibleChildren = true;
+          break;
+        }
+      }
+
+      if (!hasVisibleChildren) {
+        diffLinesOutput[i].show = false;
+        resourceRulesApplied.push(...matchedRules);
       }
     }
   }
