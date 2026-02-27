@@ -440269,12 +440269,12 @@ function saveCacheV2(paths_1, key_1, options_1) {
 
 // src/utils/shared.ts
 var CDK_EXPRESS_PIPELINE_JSON_FILE = "cdk-express-pipeline.json";
-var sanitize = (value) => value.replace(/[^a-zA-Z0-9]/g, "-");
+var sanitize = (value) => value.replace(/[^a-zA-Z0-9_*]/g, "-");
 function getCacheKey(cloudAssemblyDirectory, stackSelector) {
   let ret = `cdk-diff-pipeline-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}-`;
   ret += sanitize(cloudAssemblyDirectory) + "--";
   if (stackSelector) {
-    ret += sanitize(stackSelector) + "-";
+    ret += sanitize(stackSelector);
   }
   return ret;
 }
