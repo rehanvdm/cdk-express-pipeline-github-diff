@@ -58,8 +58,11 @@ export type DiffRule = {
   /**
    * HIDE_RESOURCE: Hides the entire resource diff if any property changes match the path
    * HIDE_PROPERTIES: Hides only the property changes that match the path, but shows the resource and other property changes
+   * HIDE_RESOURCE_IF_EMPTY: Does not hide any properties itself. After all other rules have run, if
+   *   the matched resource has no visible children remaining, hides the resource header too. Combine
+   *   with HIDE_PROPERTIES rules to suppress both properties and the now-empty resource header.
    */
-  type: 'HIDE_RESOURCE' | 'HIDE_PROPERTIES';
+  type: 'HIDE_RESOURCE' | 'HIDE_PROPERTIES' | 'HIDE_RESOURCE_IF_EMPTY';
 
   /**
    * A glob pattern to match on the path: "ResourceName.ResourceId.Property.NestedProperty.NestedProperty...."
@@ -105,6 +108,9 @@ export function saveDiffs(diffResult: DiffResult, outputDir: string) {
 export function getSavedDiffs(outputDir: string) {
   const combinedDiff: DiffResult = { stacks: {} };
   const diffsDir = getDiffsDir(outputDir);
+  if (!fs.existsSync(diffsDir)) {
+    return combinedDiff;
+  }
   const files = fs.readdirSync(diffsDir);
   for (const file of files) {
     const stackId = file.replace('.json', '');
@@ -388,6 +394,37 @@ export function extractStackDiffOutput(
           diffLinesOutput[i].show = false;
           changesWereMade = true;
         }
+      }
+    }
+  }
+
+  // After all other rules and the empty-property cleanup, evaluate HIDE_RESOURCE_IF_EMPTY rules.
+  // For each visible (~) resource whose path matches a HIDE_RESOURCE_IF_EMPTY rule, check whether
+  // all child lines are already hidden (by other rules or the empty-property pass). If so, hide the
+  // resource header too.
+  const hideIfEmptyRules = diffRules.filter((r) => r.type === 'HIDE_RESOURCE_IF_EMPTY');
+  if (hideIfEmptyRules.length > 0) {
+    for (let i = 0; i < diffLinesOutput.length; i++) {
+      const line = diffLinesOutput[i];
+      if (line.type !== 'Resource' || !line.show || line.resourceSign !== '~') continue;
+
+      // The line.path for a Resource is already "ResourceType.ResourceId" with / escaped to _ from the
+      // so it can be used directly for rule matching.
+      const matchedRules = hideIfEmptyRules.filter((r) => minimatch(line.path, r.path));
+      if (matchedRules.length === 0) continue;
+
+      let hasVisibleChildren = false;
+      for (let j = i + 1; j < diffLinesOutput.length; j++) {
+        if (diffLinesOutput[j].type === 'Resource') break;
+        if (diffLinesOutput[j].show) {
+          hasVisibleChildren = true;
+          break;
+        }
+      }
+
+      if (!hasVisibleChildren) {
+        diffLinesOutput[i].show = false;
+        resourceRulesApplied.push(...matchedRules);
       }
     }
   }
