@@ -440271,7 +440271,7 @@ function saveCacheV2(paths_1, key_1, options_1) {
 var CDK_EXPRESS_PIPELINE_JSON_FILE = "cdk-express-pipeline.json";
 var sanitize = (value) => value.replace(/[^a-zA-Z0-9_*]/g, "-");
 function getCacheKey(cloudAssemblyDirectory, stackSelector) {
-  let ret = `cdk-diff-pipeline-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}-`;
+  let ret = `cdk-diff-pipeline--${process.env.GITHUB_RUN_ID}--${process.env.GITHUB_RUN_ATTEMPT}--`;
   ret += sanitize(cloudAssemblyDirectory) + "--";
   if (stackSelector) {
     ret += sanitize(stackSelector);
@@ -443120,7 +443120,7 @@ async function listCachesWithPrefix(token, prefix2, pullNumber) {
     run_id: runId
   });
   const workflowStartedAt = new Date(runData.run_started_at ?? 0);
-  info(`Current workflow run started at: ${workflowStartedAt}.`);
+  debug(`Current workflow run started at: ${workflowStartedAt}.`);
   while (true) {
     const response = await octokit.rest.actions.getActionsCacheList({
       owner: context2.repo.owner,
@@ -443134,7 +443134,7 @@ async function listCachesWithPrefix(token, prefix2, pullNumber) {
     for (const c6 of pageCaches) {
       if (c6.created_at && new Date(c6.created_at) < workflowStartedAt) {
         reachedOldCache = true;
-        info(
+        debug(
           `Reached cache created at ${c6.created_at}, which is before the current workflow run started at ${workflowStartedAt}. Stopping pagination.`
         );
         break;
@@ -443158,7 +443158,6 @@ async function restoreCaches(githubToken, assemblyDiffs, pullNumber) {
       `Found ${caches.length} caches with prefix: ${cacheKeyPrefix} for assembly directory: ${assemblyDiff.directory}`
     );
     if (caches.length === 0) {
-      info(`No caches found with prefix: ${cacheKeyPrefix}`);
       continue;
     }
     for (const c6 of caches) {
