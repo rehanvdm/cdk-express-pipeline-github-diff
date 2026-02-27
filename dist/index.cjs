@@ -408307,7 +408307,6 @@ function diffRulesToString(diffRules) {
   return Object.entries(grouped).map(([name, groups]) => `${name}(${groups.length})`).join(", ");
 }
 function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
-  info(`extractStackDiffOutput for stack ${stackIdName}`);
   const diffLines = extractStackDiffLines(stackIdName, cdkDiffOutput);
   if (!diffLines.length) {
     return { markdown: "", diffLines: [] };
@@ -408418,17 +408417,12 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
     }
   }
   const hideIfEmptyRules = diffRules.filter((r6) => r6.type === "HIDE_RESOURCE_IF_EMPTY");
-  info(`hideIfEmptyRules: ${JSON.stringify(hideIfEmptyRules)} `);
   if (hideIfEmptyRules.length > 0) {
-    info(`diffLinesOutput before HIDE_RESOURCE_IF_EMPTY processing: ${JSON.stringify(diffLinesOutput.length)}`);
     for (let i6 = 0; i6 < diffLinesOutput.length; i6++) {
       const line = diffLinesOutput[i6];
       if (line.type !== "Resource" || !line.show || line.resourceSign !== "~")
         continue;
       const matchedRules = hideIfEmptyRules.filter((r6) => minimatch(line.path, r6.path));
-      info(
-        `Evaluating HIDE_RESOURCE_IF_EMPTY for resource at line ${i6} with path ${line.path}. Matched rules: ${JSON.stringify(matchedRules)}`
-      );
       if (matchedRules.length === 0)
         continue;
       let hasVisibleChildren = false;
@@ -443091,7 +443085,6 @@ async function generate(prContext) {
   await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
   await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
-  info(`Diff Rules ${diffRules}`);
   await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory, cdkSummaryDiff, diffRules);
 }
 function printCdkIoToGitHub(msg) {
