@@ -50,30 +50,69 @@ export async function print(prContext: PrContext) {
   }
 
   const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
-  await restoreCaches(githubToken, assemblyDiffs);
+  await restoreCaches(githubToken, assemblyDiffs, pullNumber);
   await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash);
 }
 
-async function listCachesWithPrefix(token: string, prefix: string) {
+async function listCachesWithPrefix(token: string, prefix: string, pullNumber: number) {
   const octokit = github.getOctokit(token);
+  const ref = `refs/pull/${pullNumber}/merge`;
+  const perPage = 100;
+  let page = 1;
+  const allCaches: Awaited<ReturnType<typeof octokit.rest.actions.getActionsCacheList>>['data']['actions_caches'] = [];
 
-  const caches = await octokit.rest.actions.getActionsCacheList({
+  // Fetch the current workflow run's start time, caches created before this run
+  // cannot have been saved by the generate step, so stop paginating when we hit one.
+  const runId = parseInt(process.env.GITHUB_RUN_ID ?? '0', 10);
+  const { data: runData } = await octokit.rest.actions.getWorkflowRun({
     owner: github.context.repo.owner,
-    repo: github.context.repo.repo
+    repo: github.context.repo.repo,
+    run_id: runId
   });
+  const workflowStartedAt = new Date(runData.run_started_at ?? 0);
+  core.debug(`Current workflow run started at: ${workflowStartedAt}.`);
 
-  return caches.data.actions_caches.filter((cache) => cache.key!.startsWith(prefix));
+  while (true) {
+    const response = await octokit.rest.actions.getActionsCacheList({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      ref,
+      per_page: perPage,
+      page
+    });
+
+    const pageCaches = response.data.actions_caches;
+
+    let reachedOldCache = false;
+    for (const c of pageCaches) {
+      if (c.created_at && new Date(c.created_at) < workflowStartedAt) {
+        reachedOldCache = true;
+        core.debug(
+          `Reached cache created at ${c.created_at}, which is before the current workflow run started at ${workflowStartedAt}. Stopping pagination.`
+        );
+        break;
+      }
+      if (c.key!.startsWith(prefix)) allCaches.push(c);
+    }
+
+    if (reachedOldCache || pageCaches.length < perPage) break;
+    page++;
+  }
+
+  return allCaches;
 }
 
-async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDiff[]) {
+async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDiff[], pullNumber: number) {
   for (const assemblyDiff of assemblyDiffs) {
     const savedDir = getDiffsDir(assemblyDiff.directory);
     const pipelineOrderFile = `${assemblyDiff.directory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
-    const cacheKeyPrefix = getCacheKey();
-    const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix);
+    const cacheKeyPrefix = getCacheKey(assemblyDiff.directory);
+    const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix, pullNumber);
+    core.info(
+      `Found ${caches.length} caches with prefix: ${cacheKeyPrefix} for assembly directory: ${assemblyDiff.directory}`
+    );
     if (caches.length === 0) {
-      core.info(`No caches found with prefix: ${cacheKeyPrefix}`);
-      return;
+      continue;
     }
     for (const c of caches) {
       const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);

@@ -410182,12 +410182,13 @@ function ignoreResource(change) {
 var cache6 = __toESM(require_cache3(), 1);
 
 // src/utils/shared.ts
-var import_crypto37 = require("crypto");
 var CDK_EXPRESS_PIPELINE_JSON_FILE = "cdk-express-pipeline.json";
-function getCacheKey(stackSelector, cloudAssemblyDirectory) {
-  let ret = `cdk-diff-pipeline-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT}-`;
+var sanitize = (value) => value.replace(/[^a-zA-Z0-9_*]/g, "-");
+function getCacheKey(cloudAssemblyDirectory, stackSelector) {
+  let ret = `cdk-diff-pipeline--${process.env.GITHUB_RUN_ID}--${process.env.GITHUB_RUN_ATTEMPT}--`;
+  ret += sanitize(cloudAssemblyDirectory) + "--";
   if (stackSelector) {
-    ret += (0, import_crypto37.createHash)("md5").update(stackSelector + cloudAssemblyDirectory).digest("hex");
+    ret += sanitize(stackSelector);
   }
   return ret;
 }
@@ -412948,7 +412949,7 @@ async function generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAss
   core2.info("Successfully generated CDK Express Pipeline diffs");
   const savedDir = getDiffsDir(cloudAssemblyDirectory);
   const pipelineOrderFile = `${cloudAssemblyDirectory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
-  const cacheKey = getCacheKey(stackSelectors, cloudAssemblyDirectory);
+  const cacheKey = getCacheKey(cloudAssemblyDirectory, stackSelectors);
   const savedKey = await cache6.saveCache([savedDir, pipelineOrderFile], cacheKey);
   core2.info(`Successfully cached CDK Express Pipeline diffs with key: ${cacheKey} and id: ${savedKey}`);
 }
@@ -413020,26 +413021,61 @@ async function print(prContext) {
     });
   }
   const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
-  await restoreCaches(githubToken, assemblyDiffs);
+  await restoreCaches(githubToken, assemblyDiffs, pullNumber);
   await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash);
 }
-async function listCachesWithPrefix(token, prefix) {
+async function listCachesWithPrefix(token, prefix, pullNumber) {
   const octokit = github2.getOctokit(token);
-  const caches = await octokit.rest.actions.getActionsCacheList({
+  const ref = `refs/pull/${pullNumber}/merge`;
+  const perPage = 100;
+  let page = 1;
+  const allCaches = [];
+  const runId = parseInt(process.env.GITHUB_RUN_ID ?? "0", 10);
+  const { data: runData } = await octokit.rest.actions.getWorkflowRun({
     owner: github2.context.repo.owner,
-    repo: github2.context.repo.repo
+    repo: github2.context.repo.repo,
+    run_id: runId
   });
-  return caches.data.actions_caches.filter((cache8) => cache8.key.startsWith(prefix));
+  const workflowStartedAt = new Date(runData.run_started_at ?? 0);
+  core3.debug(`Current workflow run started at: ${workflowStartedAt}.`);
+  while (true) {
+    const response = await octokit.rest.actions.getActionsCacheList({
+      owner: github2.context.repo.owner,
+      repo: github2.context.repo.repo,
+      ref,
+      per_page: perPage,
+      page
+    });
+    const pageCaches = response.data.actions_caches;
+    let reachedOldCache = false;
+    for (const c6 of pageCaches) {
+      if (c6.created_at && new Date(c6.created_at) < workflowStartedAt) {
+        reachedOldCache = true;
+        core3.debug(
+          `Reached cache created at ${c6.created_at}, which is before the current workflow run started at ${workflowStartedAt}. Stopping pagination.`
+        );
+        break;
+      }
+      if (c6.key.startsWith(prefix))
+        allCaches.push(c6);
+    }
+    if (reachedOldCache || pageCaches.length < perPage)
+      break;
+    page++;
+  }
+  return allCaches;
 }
-async function restoreCaches(githubToken, assemblyDiffs) {
+async function restoreCaches(githubToken, assemblyDiffs, pullNumber) {
   for (const assemblyDiff of assemblyDiffs) {
     const savedDir = getDiffsDir(assemblyDiff.directory);
     const pipelineOrderFile = `${assemblyDiff.directory}/${CDK_EXPRESS_PIPELINE_JSON_FILE}`;
-    const cacheKeyPrefix = getCacheKey();
-    const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix);
+    const cacheKeyPrefix = getCacheKey(assemblyDiff.directory);
+    const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix, pullNumber);
+    core3.info(
+      `Found ${caches.length} caches with prefix: ${cacheKeyPrefix} for assembly directory: ${assemblyDiff.directory}`
+    );
     if (caches.length === 0) {
-      core3.info(`No caches found with prefix: ${cacheKeyPrefix}`);
-      return;
+      continue;
     }
     for (const c6 of caches) {
       const restoredKey = await cache7.restoreCache([savedDir, pipelineOrderFile], c6.key);
