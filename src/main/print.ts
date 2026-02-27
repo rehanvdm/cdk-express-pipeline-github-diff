@@ -61,7 +61,7 @@ async function listCachesWithPrefix(token: string, prefix: string, pullNumber: n
   let page = 1;
   const allCaches: Awaited<ReturnType<typeof octokit.rest.actions.getActionsCacheList>>['data']['actions_caches'] = [];
 
-  // Fetch the current workflow run's start time — caches created before this run
+  // Fetch the current workflow run's start time, caches created before this run
   // cannot have been saved by the generate step, so stop paginating when we hit one.
   const runId = parseInt(process.env.GITHUB_RUN_ID ?? '0', 10);
   const { data: runData } = await octokit.rest.actions.getWorkflowRun({
@@ -70,7 +70,7 @@ async function listCachesWithPrefix(token: string, prefix: string, pullNumber: n
     run_id: runId
   });
   const workflowStartedAt = new Date(runData.run_started_at ?? 0);
-  core.info(`Current workflow run started at: ${workflowStartedAt}.`);
+  core.debug(`Current workflow run started at: ${workflowStartedAt}.`);
 
   while (true) {
     const response = await octokit.rest.actions.getActionsCacheList({
@@ -83,13 +83,11 @@ async function listCachesWithPrefix(token: string, prefix: string, pullNumber: n
 
     const pageCaches = response.data.actions_caches;
 
-    // The list is ordered newest-first. Stop as soon as we find a cache that predates
-    // the current workflow run, and only keep entries matching the prefix.
     let reachedOldCache = false;
     for (const c of pageCaches) {
       if (c.created_at && new Date(c.created_at) < workflowStartedAt) {
         reachedOldCache = true;
-        core.info(
+        core.debug(
           `Reached cache created at ${c.created_at}, which is before the current workflow run started at ${workflowStartedAt}. Stopping pagination.`
         );
         break;
@@ -114,7 +112,6 @@ async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDi
       `Found ${caches.length} caches with prefix: ${cacheKeyPrefix} for assembly directory: ${assemblyDiff.directory}`
     );
     if (caches.length === 0) {
-      core.info(`No caches found with prefix: ${cacheKeyPrefix}`);
       continue;
     }
     for (const c of caches) {
