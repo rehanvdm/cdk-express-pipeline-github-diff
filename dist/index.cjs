@@ -408417,15 +408417,15 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
     }
   }
   const hideIfEmptyRules = diffRules.filter((r6) => r6.type === "HIDE_RESOURCE_IF_EMPTY");
-  console.log("hideIfEmptyRules", hideIfEmptyRules);
+  info(`hideIfEmptyRules: ${JSON.stringify(hideIfEmptyRules)} `);
   if (hideIfEmptyRules.length > 0) {
-    console.log("diffLinesOutput before HIDE_RESOURCE_IF_EMPTY processing:");
+    info(`diffLinesOutput before HIDE_RESOURCE_IF_EMPTY processing: ${JSON.stringify(diffLinesOutput.length)}`);
     for (let i6 = 0; i6 < diffLinesOutput.length; i6++) {
       const line = diffLinesOutput[i6];
       if (line.type !== "Resource" || !line.show || line.resourceSign !== "~")
         continue;
       const matchedRules = hideIfEmptyRules.filter((r6) => minimatch(line.path, r6.path));
-      console.log(
+      info(
         `Evaluating HIDE_RESOURCE_IF_EMPTY for resource at line ${i6} with path ${line.path}. Matched rules: ${JSON.stringify(matchedRules)}`
       );
       if (matchedRules.length === 0)
