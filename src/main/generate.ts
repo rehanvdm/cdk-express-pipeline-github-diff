@@ -36,7 +36,6 @@ export async function generate(prContext: PrContext) {
   await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
   await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
-  core.info(`Diff Rules ${diffRules}`);
   await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory, cdkSummaryDiff, diffRules);
 }
 

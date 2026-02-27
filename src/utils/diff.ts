@@ -1,4 +1,3 @@
-import * as core from '@actions/core';
 import { ResourceDifference, type TemplateDiff } from '@aws-cdk/cloudformation-diff';
 import * as fs from 'node:fs';
 import path from 'node:path';
@@ -280,7 +279,6 @@ export function extractStackDiffOutput(
   cdkDiffOutput: string,
   diffRules: DiffRule[] = []
 ): { markdown: string; diffLines: DiffLineOutput[] } {
-  core.info(`extractStackDiffOutput for stack ${stackIdName}`);
   const diffLines = extractStackDiffLines(stackIdName, cdkDiffOutput);
   if (!diffLines.length) {
     return { markdown: '', diffLines: [] };
@@ -430,9 +428,7 @@ export function extractStackDiffOutput(
   // all child lines are already hidden (by other rules or the empty-property pass). If so, hide the
   // resource header too.
   const hideIfEmptyRules = diffRules.filter((r) => r.type === 'HIDE_RESOURCE_IF_EMPTY');
-  core.info(`hideIfEmptyRules: ${JSON.stringify(hideIfEmptyRules)} `);
   if (hideIfEmptyRules.length > 0) {
-    core.info(`diffLinesOutput before HIDE_RESOURCE_IF_EMPTY processing: ${JSON.stringify(diffLinesOutput.length)}`);
     for (let i = 0; i < diffLinesOutput.length; i++) {
       const line = diffLinesOutput[i];
       if (line.type !== 'Resource' || !line.show || line.resourceSign !== '~') continue;
@@ -440,9 +436,6 @@ export function extractStackDiffOutput(
       // The line.path for a Resource is already "ResourceType.ResourceId" with / escaped to _ from the
       // so it can be used directly for rule matching.
       const matchedRules = hideIfEmptyRules.filter((r) => minimatch(line.path, r.path));
-      core.info(
-        `Evaluating HIDE_RESOURCE_IF_EMPTY for resource at line ${i} with path ${line.path}. Matched rules: ${JSON.stringify(matchedRules)}`
-      );
       if (matchedRules.length === 0) continue;
 
       let hasVisibleChildren = false;
