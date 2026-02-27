@@ -5,7 +5,7 @@ import { CdkExpressPipelineAssembly } from 'cdk-express-pipeline';
 import fs from 'node:fs';
 import path from 'node:path';
 import { AssemblyDiff, updateGithubPrDescription } from '../utils/output.js';
-import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey, getHashedCachePaths } from '../utils/shared.js';
+import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey } from '../utils/shared.js';
 import * as jsYaml from 'js-yaml';
 import * as github from '@actions/github';
 import { PrContext } from './index.js';
@@ -73,33 +73,16 @@ async function restoreCaches(githubToken: string, assemblyDiffs: PrintAssemblyDi
     const caches = await listCachesWithPrefix(githubToken, cacheKeyPrefix);
     if (caches.length === 0) {
       core.info(`No caches found with prefix: ${cacheKeyPrefix}`);
-      continue;
+      return;
     }
-
-    fs.mkdirSync(savedDir, { recursive: true });
-    fs.mkdirSync(path.dirname(pipelineOrderFile), { recursive: true });
-    core.info(`NEW VERSION: 6`);
     for (const c of caches) {
-      // Extract the hash that was appended to the cache key (everything after the last '-')
-      const hash = c.key!.substring(cacheKeyPrefix.length);
-      core.info(`Attempting to restore cache with key: ${c.key!} (hash: ${hash})`);
-      const { hashedSavedDir, hashedPipelineOrderFile } = getHashedCachePaths(savedDir, pipelineOrderFile, hash);
-      core.info(`Looking for cached paths: ${hashedSavedDir}, ${hashedPipelineOrderFile}`);
-      const restoredKey = await cache.restoreCache([hashedSavedDir, hashedPipelineOrderFile], c.key!);
-      if (!restoredKey) {
+      const restoredKey = await cache.restoreCache([savedDir, pipelineOrderFile], c.key!);
+      if (restoredKey) {
+        core.info(
+          `Successfully restored CDK Express Pipeline diffs from cache with key: ${c.key!} and id: ${restoredKey}`
+        );
+      } else {
         core.info(`No cached CDK Express Pipeline diffs found with key: ${c.key!}`);
-        continue;
-      }
-      core.info(`Successfully restored CDK Express Pipeline diffs from cache with key: ${c.key!}`);
-
-      // Merge hashed diffs dir into the single target savedDir (last writer wins for the pipeline order file)
-      if (fs.existsSync(hashedSavedDir)) {
-        core.info(`Copying cached diffs from ${hashedSavedDir} into ${savedDir}`);
-        fs.cpSync(hashedSavedDir, savedDir, { recursive: true });
-      }
-      if (fs.existsSync(hashedPipelineOrderFile)) {
-        core.info(`Copying cached pipeline order file from ${hashedPipelineOrderFile} into ${pipelineOrderFile}`);
-        fs.copyFileSync(hashedPipelineOrderFile, pipelineOrderFile);
       }
     }
   }
