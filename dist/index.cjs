@@ -408307,6 +408307,7 @@ function diffRulesToString(diffRules) {
   return Object.entries(grouped).map(([name, groups]) => `${name}(${groups.length})`).join(", ");
 }
 function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
+  info(`extractStackDiffOutput for stack ${stackIdName}`);
   const diffLines = extractStackDiffLines(stackIdName, cdkDiffOutput);
   if (!diffLines.length) {
     return { markdown: "", diffLines: [] };
@@ -443090,6 +443091,7 @@ async function generate(prContext) {
   await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
   await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
+  info(`Diff Rules ${diffRules}`);
   await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory, cdkSummaryDiff, diffRules);
 }
 function printCdkIoToGitHub(msg) {

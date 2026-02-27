@@ -280,6 +280,7 @@ export function extractStackDiffOutput(
   cdkDiffOutput: string,
   diffRules: DiffRule[] = []
 ): { markdown: string; diffLines: DiffLineOutput[] } {
+  core.info(`extractStackDiffOutput for stack ${stackIdName}`);
   const diffLines = extractStackDiffLines(stackIdName, cdkDiffOutput);
   if (!diffLines.length) {
     return { markdown: '', diffLines: [] };
