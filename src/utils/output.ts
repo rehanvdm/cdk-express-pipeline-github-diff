@@ -4,14 +4,46 @@ import { DiffSummary } from './diff.js';
 
 const MAX_DESCRIPTION_LENGTH = 262145;
 
-export function getNowFormated() {
-  return (
-    new Date()
+export function getNowFormated(additionalTimezones?: string[]) {
+  const now = new Date();
+  const utcStr =
+    now
       .toISOString() // e.g. "2025-08-09T15:43:22.000Z"
       .replace('T', ' ') // "2025-08-09 15:43:22.000Z"
       .replace(/\.\d{3}Z$/, '') + // remove milliseconds + Z
-    ' (UTC)'
-  );
+    ' (UTC)';
+
+  if (!additionalTimezones || additionalTimezones.length === 0) {
+    return utcStr;
+  }
+
+  const tzParts = additionalTimezones
+    .map((tz) => {
+      try {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+          timeZoneName: 'short'
+        }).formatToParts(now);
+        const hour = parts.find((p) => p.type === 'hour')?.value ?? '';
+        const minute = parts.find((p) => p.type === 'minute')?.value ?? '';
+        const second = parts.find((p) => p.type === 'second')?.value ?? '';
+        const tzName = parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
+        return `${hour}:${minute}:${second} (${tzName})`;
+      } catch {
+        return null;
+      }
+    })
+    .filter((s): s is string => s !== null);
+
+  if (tzParts.length === 0) {
+    return utcStr;
+  }
+
+  return utcStr + ' | ' + tzParts.join(' | ');
 }
 
 export type AssemblyDiff = {
@@ -49,7 +81,8 @@ export async function setGeneratingPrDescription(
   repo: string,
   pullNumber: number,
   ghToken: string,
-  gitHash: string
+  gitHash: string,
+  timezones?: string[]
 ) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
@@ -64,7 +97,7 @@ export async function setGeneratingPrDescription(
     return response.data.body || '';
   }
 
-  const now = getNowFormated();
+  const now = getNowFormated(timezones);
   const newContent = `${MARKER_HEADER}
 ## CDK Diff
 
@@ -88,12 +121,13 @@ export async function updateGithubPrDescription(
   pullNumber: number,
   ghToken: string,
   diffs: AssemblyDiff[],
-  gitHash: string
+  gitHash: string,
+  timezones?: string[]
 ) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
 
-  const now = getNowFormated();
+  const now = getNowFormated(timezones);
   let newContent = MARKER_HEADER;
 
   for (const diff of diffs) {

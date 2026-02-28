@@ -406531,9 +406531,36 @@ var import_toolkit_lib = __toESM(require_lib15(), 1);
 
 // src/utils/output.ts
 var MAX_DESCRIPTION_LENGTH = 262145;
-function getNowFormated() {
-  return (/* @__PURE__ */ new Date()).toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "") + // remove milliseconds + Z
+function getNowFormated(additionalTimezones) {
+  const now = /* @__PURE__ */ new Date();
+  const utcStr = now.toISOString().replace("T", " ").replace(/\.\d{3}Z$/, "") + // remove milliseconds + Z
   " (UTC)";
+  if (!additionalTimezones || additionalTimezones.length === 0) {
+    return utcStr;
+  }
+  const tzParts = additionalTimezones.map((tz) => {
+    try {
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: tz,
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+        timeZoneName: "short"
+      }).formatToParts(now);
+      const hour = parts.find((p6) => p6.type === "hour")?.value ?? "";
+      const minute = parts.find((p6) => p6.type === "minute")?.value ?? "";
+      const second = parts.find((p6) => p6.type === "second")?.value ?? "";
+      const tzName = parts.find((p6) => p6.type === "timeZoneName")?.value ?? tz;
+      return `${hour}:${minute}:${second} (${tzName})`;
+    } catch {
+      return null;
+    }
+  }).filter((s6) => s6 !== null);
+  if (tzParts.length === 0) {
+    return utcStr;
+  }
+  return utcStr + " | " + tzParts.join(" | ");
 }
 var MARKER = "<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->";
 var MARKER_HEADER = `${MARKER}
@@ -406551,7 +406578,7 @@ async function getUpdatedDescription(octokit, owner, repo, pullNumber, newMarker
   return cleanedDescription + (cleanedDescription ? "\n\n" : "") + newMarkerContent;
 }
 var GENERATING_MARKER = "\u23F3 Generating diff from latest commit";
-async function setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitHash) {
+async function setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitHash, timezones) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
   const response = await octokit.rest.pulls.get({
@@ -406562,7 +406589,7 @@ async function setGeneratingPrDescription(owner, repo, pullNumber, ghToken, gitH
   if ((response.data.body || "").includes(GENERATING_MARKER)) {
     return response.data.body || "";
   }
-  const now = getNowFormated();
+  const now = getNowFormated(timezones);
   const newContent = `${MARKER_HEADER}
 ## CDK Diff
 
@@ -406576,10 +406603,10 @@ ${GENERATING_MARKER}: ${gitHash} at ${now}`;
   });
   return combinedContent;
 }
-async function updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash) {
+async function updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, timezones) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
-  const now = getNowFormated();
+  const now = getNowFormated(timezones);
   let newContent = MARKER_HEADER;
   for (const diff2 of diffs) {
     const summaryMarkers = [];
@@ -440411,18 +440438,6 @@ function saveCacheV2(paths_1, key_1, options_1) {
   });
 }
 
-// src/utils/shared.ts
-var CDK_EXPRESS_PIPELINE_JSON_FILE = "cdk-express-pipeline.json";
-var sanitize = (value) => value.replace(/[^a-zA-Z0-9_*]/g, "-");
-function getCacheKey(cloudAssemblyDirectory, stackSelector) {
-  let ret = `cdk-diff-pipeline--${process.env.GITHUB_RUN_ID}--${process.env.GITHUB_RUN_ATTEMPT}--`;
-  ret += sanitize(cloudAssemblyDirectory) + "--";
-  if (stackSelector) {
-    ret += sanitize(stackSelector);
-  }
-  return ret;
-}
-
 // node_modules/js-yaml/dist/js-yaml.mjs
 function isNothing(subject) {
   return typeof subject === "undefined" || subject === null;
@@ -443080,6 +443095,25 @@ var safeLoad = renamed("safeLoad", "load");
 var safeLoadAll = renamed("safeLoadAll", "loadAll");
 var safeDump = renamed("safeDump", "dump");
 
+// src/utils/shared.ts
+var CDK_EXPRESS_PIPELINE_JSON_FILE = "cdk-express-pipeline.json";
+var sanitize = (value) => value.replace(/[^a-zA-Z0-9_*]/g, "-");
+function getCacheKey(cloudAssemblyDirectory, stackSelector) {
+  let ret = `cdk-diff-pipeline--${process.env.GITHUB_RUN_ID}--${process.env.GITHUB_RUN_ATTEMPT}--`;
+  ret += sanitize(cloudAssemblyDirectory) + "--";
+  if (stackSelector) {
+    ret += sanitize(stackSelector);
+  }
+  return ret;
+}
+function parseDisplayTimezones(raw) {
+  const parsed = load(raw || "[]");
+  if (!Array.isArray(parsed)) {
+    throw new Error('The "display-timezones" input must be a YAML array.');
+  }
+  return parsed.filter((tz) => typeof tz === "string");
+}
+
 // src/main/generate.ts
 async function generate(prContext) {
   const cloudAssemblyDirectory = getInput("cloud-assembly-directory", { required: false }) || "cdk.out";
@@ -443089,6 +443123,7 @@ async function generate(prContext) {
   if (!Array.isArray(diffRulesParsed)) {
     throw new Error('The "diff-rules" input must be a YAML array.');
   }
+  const displayTimezones = parseDisplayTimezones(getInput("display-timezones", { required: false }));
   const diffRules = [];
   for (const rule of diffRulesParsed) {
     if (typeof rule !== "object" || !rule.name || !rule.type || !rule.path) {
@@ -443102,9 +443137,9 @@ async function generate(prContext) {
   }
   const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
   const jobName = getInput("job-name", { required: false }) || context2.job;
-  await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash);
+  await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash, displayTimezones);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
-  await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
+  await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash, displayTimezones);
   await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory, cdkSummaryDiff, diffRules);
 }
 function printCdkIoToGitHub(msg) {
@@ -443198,8 +443233,8 @@ async function getCurrentJobUrl(token, jobName) {
   }
   return currentJob?.id;
 }
-async function outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash) {
-  const now = getNowFormated();
+async function outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash, timezones) {
+  const now = getNowFormated(timezones);
   let jobText = "";
   const jobId = await getCurrentJobUrl(githubToken, jobName);
   if (jobId) {
@@ -443248,8 +443283,9 @@ async function print(prContext) {
     });
   }
   const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
+  const displayTimezones = parseDisplayTimezones(getInput("display-timezones", { required: false }));
   await restoreCaches(githubToken, assemblyDiffs, pullNumber);
-  await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash);
+  await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash, displayTimezones);
 }
 async function listCachesWithPrefix(token, prefix2, pullNumber) {
   const octokit = getOctokit(token);
@@ -443316,7 +443352,7 @@ async function restoreCaches(githubToken, assemblyDiffs, pullNumber) {
     }
   }
 }
-async function commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash) {
+async function commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash, timezones) {
   const diffs = [];
   for (const assemblyDiff of assemblyDiffs) {
     const allStackDiffs = getSavedDiffs(assemblyDiff.directory);
@@ -443350,7 +443386,7 @@ async function commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, 
     info(``);
     info(markdown);
   }
-  await updateGithubPrDescription(owner, repo, pullNumber, githubToken, diffs, gitHash);
+  await updateGithubPrDescription(owner, repo, pullNumber, githubToken, diffs, gitHash, timezones);
 }
 
 // src/main/index.ts
