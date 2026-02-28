@@ -5,7 +5,7 @@ exports[`diff.ts test combined lambda rules - hide VERSION env var, code changes
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
-!      {Applied Resource Diff Rules: hide-lambda-if-all-changes-are-hidden(2)}
+!      {Applied Resource Diff Rules: hide-lambda-if-all-changes-are-hidden(2)[LambdaCodeAndVersion, LambdaVersion]}
 !      [~] AWS::Lambda::Function LambdaWithOtherChanges LambdaWithOtherChanges05F1C435 {Applied Property Diff Rules: hide-code-changes(3)}
 !       └─ [~] MemorySize
 !           ├─ [-] 256
@@ -19,10 +19,10 @@ exports[`diff.ts test complex diff markdown - diff rules: HIDE_RESOURCE_IF_EMPTY
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
-!      {Applied Resource Diff Rules: hide-sns-if-empty(1)}
+!      {Applied Resource Diff Rules: hide-sns-if-empty(1)[TopicA]}
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
-!      {Applied Resource Diff Rules: hide-sns-if-empty(1)}
+!      {Applied Resource Diff Rules: hide-sns-if-empty(1)[TopicR]}
 -      [-] AWS::SNS::Topic TopicBB2A41848 destroy
 +      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
     📦 StackD (wave1_wave1stage2_stack-d)
@@ -99,7 +99,7 @@ exports[`diff.ts test complex diff markdown - diff rules: HIDE_RESOURCE_IF_EMPTY
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
-!      {Applied Resource Diff Rules: hide-sns-if-empty(1)}
+!      {Applied Resource Diff Rules: hide-sns-if-empty(1)[TopicA]}
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
 -      [-] AWS::SNS::Topic TopicBB2A41848 destroy
@@ -691,10 +691,10 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topics - 
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
-!      {Applied Resource Diff Rules: hide-all-sns-resources(1)}
+!      {Applied Resource Diff Rules: hide-all-sns-resources(1)[TopicA]}
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
-!      {Applied Resource Diff Rules: hide-all-sns-resources(1)}
+!      {Applied Resource Diff Rules: hide-all-sns-resources(1)[TopicR]}
 -      [-] AWS::SNS::Topic TopicBB2A41848 destroy
 +      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
     📦 StackD (wave1_wave1stage2_stack-d)
@@ -771,10 +771,10 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide all SNS Topics th
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
-!      {Applied Resource Diff Rules: hide-topics-with-display-name-changes(1)}
+!      {Applied Resource Diff Rules: hide-topics-with-display-name-changes(1)[TopicA]}
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
-!      {Applied Resource Diff Rules: hide-topics-with-display-name-changes(1)}
+!      {Applied Resource Diff Rules: hide-topics-with-display-name-changes(1)[TopicR]}
 -      [-] AWS::SNS::Topic TopicBB2A41848 destroy
 +      [+] AWS::SNS::TopicPolicy TopicR/Policy TopicRPolicyD33151F3
 !       └─ [~] TopicName (requires replacement)
@@ -927,7 +927,7 @@ exports[`diff.ts test complex diff markdown - diff rules: Hide only TopicA - Res
 🌊 wave1
   🏗 stage1
     📦 StackA (wave1_stage1_stack-a)
-!      {Applied Resource Diff Rules: hide-all-topica-resources(1)}
+!      {Applied Resource Diff Rules: hide-all-topica-resources(1)[TopicA]}
   🏗 wave1stage2
     📦 StackB (wave1_wave1stage2_stack-b)
 -      [-] AWS::SNS::Topic TopicBB2A41848 destroy
