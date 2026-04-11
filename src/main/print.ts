@@ -49,9 +49,12 @@ export async function print(prContext: PrContext) {
     });
   }
 
+  const collapseDiffInput = core.getInput('collapse-diff', { required: false });
+  const diffCollapsed = collapseDiffInput.toLowerCase() === 'true';
+
   const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
   await restoreCaches(githubToken, assemblyDiffs, pullNumber);
-  await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash);
+  await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash, diffCollapsed);
 }
 
 async function listCachesWithPrefix(token: string, prefix: string, pullNumber: number) {
@@ -133,7 +136,8 @@ async function commentOnPr(
   owner: string,
   repo: string,
   pullNumber: number,
-  gitHash: string
+  gitHash: string,
+  diffCollapsed: boolean
 ) {
   const diffs: AssemblyDiff[] = [];
   for (const assemblyDiff of assemblyDiffs) {
@@ -173,5 +177,5 @@ async function commentOnPr(
     core.info(markdown);
   }
 
-  await updateGithubPrDescription(owner, repo, pullNumber, githubToken, diffs, gitHash);
+  await updateGithubPrDescription(owner, repo, pullNumber, githubToken, diffs, gitHash, diffCollapsed);
 }

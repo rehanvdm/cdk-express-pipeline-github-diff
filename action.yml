@@ -54,6 +54,12 @@ inputs:
       The name property of the job, to correctly link to the action/job logs when generating the summaries.
       Optional for `mode: generate`
     required: false
+  collapse-diff:
+    description: |
+      Whether to collapse the diff details in the PR description by default.
+      Optional for `mode: print`.
+      Defaults to 'false'.
+    required: false
   diff-rules:
     description: |
       An array of objects indicating rules to apply to the diff output on the PR description.

@@ -88,7 +88,8 @@ export async function updateGithubPrDescription(
   pullNumber: number,
   ghToken: string,
   diffs: AssemblyDiff[],
-  gitHash: string
+  gitHash: string,
+  diffCollapsed: boolean = false
 ) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
@@ -112,7 +113,7 @@ export async function updateGithubPrDescription(
     newContent += `
 ## ${diff.header}
 
-<details open>
+<details${diffCollapsed ? '' : ' open'}>
 <summary> Details ${summaryText} </summary>
 
 ${diff.markdown}
