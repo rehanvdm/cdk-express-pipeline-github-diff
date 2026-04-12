@@ -1,5 +1,5 @@
 //@ts-expect-error TS/JS import issue but works
-import { updateGithubPrDescription, setGeneratingPrDescription } from '../src/utils/output';
+import { updateGithubPrDescription, setGeneratingPrDescription, getNowFormated } from '../src/utils/output';
 
 // Mock the modules
 jest.mock('@octokit/core', () => {
@@ -469,5 +469,117 @@ describe('setGeneratingPrDescription', () => {
     // Should not call update since the generating marker is already present
     expect(mockOctokitInstance.rest.pulls.update).not.toHaveBeenCalled();
     expect(result).toBe(existingDescription);
+  });
+});
+
+describe('getNowFormated', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2024-01-01T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('should return UTC-only string when no timezones provided', () => {
+    expect(getNowFormated()).toBe('2024-01-01 12:00:00 (UTC)');
+  });
+
+  it('should return UTC-only string when empty timezones array provided', () => {
+    expect(getNowFormated([])).toBe('2024-01-01 12:00:00 (UTC)');
+  });
+
+  it('should append additional timezone times', () => {
+    const result = getNowFormated(['America/New_York']);
+    expect(result).toMatch(/^2024-01-01 12:00:00 \(UTC\) \| \d{2}:\d{2}:\d{2} \(.+\)$/);
+    expect(result).toContain('2024-01-01 12:00:00 (UTC) |');
+  });
+
+  it('should append multiple timezone times', () => {
+    const result = getNowFormated(['America/New_York', 'Europe/Paris']);
+    expect(result).toContain('2024-01-01 12:00:00 (UTC) |');
+    const parts = result.split(' | ');
+    expect(parts).toHaveLength(3);
+  });
+
+  it('should skip invalid timezones silently', () => {
+    const result = getNowFormated(['Invalid/Timezone']);
+    expect(result).toBe('2024-01-01 12:00:00 (UTC)');
+  });
+
+  it('should skip invalid timezones but show valid ones', () => {
+    const result = getNowFormated(['Invalid/Timezone', 'America/New_York']);
+    expect(result).toContain('2024-01-01 12:00:00 (UTC) |');
+    const parts = result.split(' | ');
+    expect(parts).toHaveLength(2);
+  });
+
+  it('should append (+1d) when the timezone is ahead and crosses into the next day', () => {
+    // UTC 2024-01-01T23:30:00Z → Asia/Tokyo (UTC+9) = 2024-01-02 08:30:00 JST
+    jest.setSystemTime(new Date('2024-01-01T23:30:00.000Z'));
+    const result = getNowFormated(['Asia/Tokyo']);
+    expect(result).toContain('2024-01-01 23:30:00 (UTC) |');
+    expect(result).toMatch(/\(\+1d\)/);
+  });
+
+  it('should append (-1d) when the timezone is behind and crosses into the previous day', () => {
+    // UTC 2024-01-01T03:00:00Z → America/Los_Angeles (UTC-8 in winter) = 2023-12-31 19:00:00 PST
+    jest.setSystemTime(new Date('2024-01-01T03:00:00.000Z'));
+    const result = getNowFormated(['America/Los_Angeles']);
+    expect(result).toContain('2024-01-01 03:00:00 (UTC) |');
+    expect(result).toMatch(/\(-1d\)/);
+  });
+
+  it('should not append a day indicator when the timezone is on the same date as UTC', () => {
+    // UTC 2024-01-01T12:00:00Z → America/New_York (UTC-5) = 2024-01-01 07:00:00 EST — same day
+    const result = getNowFormated(['America/New_York']);
+    expect(result).not.toMatch(/\([+-]\dd\)/);
+    expect(result).toMatch(/^2024-01-01 12:00:00 \(UTC\) \| \d{2}:\d{2}:\d{2} \(.+\)$/);
+  });
+});
+
+describe('updateGithubPrDescription with timezones', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockOctokitInstance: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockRestEndpointMethods: any;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    //eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { Octokit } = require('@octokit/core');
+    //eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { restEndpointMethods } = require('@octokit/plugin-rest-endpoint-methods');
+
+    mockOctokitInstance = new Octokit();
+    mockRestEndpointMethods = restEndpointMethods;
+    mockRestEndpointMethods.mockReturnValue(mockOctokitInstance.rest);
+
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2024-01-01T12:00:00.000Z'));
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('should include additional timezones in the Generated At line', async () => {
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: '...',
+        summary: { additions: 1, updates: 0, removals: 0 }
+      }
+    ];
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({ data: { body: null } });
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await updateGithubPrDescription('owner', 'repo', 1, 'token', diffs, 'abc123', ['America/New_York']);
+
+    expect(result).toContain('Generated At: 2024-01-01 12:00:00 (UTC) |');
+    expect(result).toMatchSnapshot();
   });
 });

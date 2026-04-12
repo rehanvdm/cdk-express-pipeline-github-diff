@@ -152,3 +152,18 @@ exports[`updateGithubPrDescription should update PR description with new content
 
 *Generated At: 2024-01-01 12:00:00 (UTC) from commit: abc123def456*"
 `;
+
+exports[`updateGithubPrDescription with timezones should include additional timezones in the Generated At line 1`] = `
+"<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->
+<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
+---
+## CDK Diff
+
+<details open>
+<summary> Details 🟢1 </summary>
+
+...
+</details>
+
+*Generated At: 2024-01-01 12:00:00 (UTC) | 07:00:00 (EST) from commit: abc123*"
+`;

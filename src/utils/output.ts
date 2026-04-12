@@ -4,14 +4,61 @@ import { DiffSummary } from './diff.js';
 
 const MAX_DESCRIPTION_LENGTH = 262145;
 
-export function getNowFormated() {
-  return (
-    new Date()
+export function getNowFormated(additionalTimezones?: string[]) {
+  const now = new Date();
+  const utcStr =
+    now
       .toISOString() // e.g. "2025-08-09T15:43:22.000Z"
       .replace('T', ' ') // "2025-08-09 15:43:22.000Z"
       .replace(/\.\d{3}Z$/, '') + // remove milliseconds + Z
-    ' (UTC)'
-  );
+    ' (UTC)';
+
+  if (!additionalTimezones || additionalTimezones.length === 0) {
+    return utcStr;
+  }
+
+  // UTC midnight used as the baseline for day-difference calculation
+  const utcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
+  const tzParts = additionalTimezones
+    .map((tz) => {
+      try {
+        const parts = new Intl.DateTimeFormat('en-US', {
+          timeZone: tz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false,
+          timeZoneName: 'short'
+        }).formatToParts(now);
+        const year = parseInt(parts.find((p) => p.type === 'year')?.value ?? '0', 10);
+        const month = parseInt(parts.find((p) => p.type === 'month')?.value ?? '1', 10) - 1;
+        const day = parseInt(parts.find((p) => p.type === 'day')?.value ?? '0', 10);
+        const hour = parts.find((p) => p.type === 'hour')?.value ?? '';
+        const minute = parts.find((p) => p.type === 'minute')?.value ?? '';
+        const second = parts.find((p) => p.type === 'second')?.value ?? '';
+        const tzName = parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
+
+        // Append a relative day indicator when the local date differs from the UTC date
+        const localMidnight = Date.UTC(year, month, day);
+        const dayDiff = Math.round((localMidnight - utcMidnight) / (1000 * 60 * 60 * 24));
+        const dayIndicator = dayDiff !== 0 ? ` (${dayDiff > 0 ? '+' : ''}${dayDiff}d)` : '';
+
+        return `${hour}:${minute}:${second}${dayIndicator} (${tzName})`;
+      } catch {
+        return null;
+      }
+    })
+    .filter((s): s is string => s !== null);
+
+  if (tzParts.length === 0) {
+    return utcStr;
+  }
+
+  return utcStr + ' | ' + tzParts.join(' | ');
 }
 
 export type AssemblyDiff = {
@@ -49,7 +96,8 @@ export async function setGeneratingPrDescription(
   repo: string,
   pullNumber: number,
   ghToken: string,
-  gitHash: string
+  gitHash: string,
+  timezones?: string[]
 ) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
@@ -64,7 +112,7 @@ export async function setGeneratingPrDescription(
     return response.data.body || '';
   }
 
-  const now = getNowFormated();
+  const now = getNowFormated(timezones);
   const newContent = `${MARKER_HEADER}
 ## CDK Diff
 
@@ -88,12 +136,13 @@ export async function updateGithubPrDescription(
   pullNumber: number,
   ghToken: string,
   diffs: AssemblyDiff[],
-  gitHash: string
+  gitHash: string,
+  timezones?: string[]
 ) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
 
-  const now = getNowFormated();
+  const now = getNowFormated(timezones);
   let newContent = MARKER_HEADER;
 
   for (const diff of diffs) {

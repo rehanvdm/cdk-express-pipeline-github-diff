@@ -77,6 +77,20 @@ The generate mode analyzes your CDK Express Pipeline assembly and creates detail
     `ResourceName.ResourceId.Property.NestedProperty.NestedProperty....` If a ResourceId has / in its name, it will be
     replaced with \_ to avoid issues with glob matching
 
+- `display-timezones`: A YAML array of [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+  names to display alongside UTC in the "Generated At" timestamp (optional). Example Usage:
+
+  ```yaml
+  display-timezones: |
+    - America/New_York
+    - Europe/Paris
+    - Asia/Tokyo
+  ```
+
+  The timestamp will render compactly as:
+  `YYYY-MM-DD HH:MM:SS (UTC) | HH:MM:SS (EST) | HH:MM:SS (CET) | HH:MM:SS (JST)`. If a timezone falls on a different
+  calendar date than UTC, a relative day offset is appended, e.g. `HH:MM:SS (+1d) (JST)` or `HH:MM:SS (-1d) (PST)`.
+
 #### Diff Rules Examples
 
 ##### HIDE ALL SNS TOPIC RESOURCES
@@ -479,6 +493,19 @@ The print mode retrieves cached diff data and updates the pull request descripti
     - header: CDK Diff Production
       directory: cdk.out/prod
   ```
+- `display-timezones`: A YAML array of [IANA timezone](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+  names to display alongside UTC in the "Generated At" timestamp (optional). Example Usage:
+
+  ```yaml
+  display-timezones: |
+    - America/New_York
+    - Europe/Paris
+    - Asia/Tokyo
+  ```
+
+  The timestamp will render compactly as:
+  `YYYY-MM-DD HH:MM:SS (UTC) | HH:MM:SS (EST) | HH:MM:SS (CET) | HH:MM:SS (JST)`. If a timezone falls on a different
+  calendar date than UTC, a relative day offset is appended, e.g. `HH:MM:SS (+1d) (JST)` or `HH:MM:SS (-1d) (PST)`.
 
 ### Basic - Single Job Diff
 

@@ -5,7 +5,7 @@ import { getNowFormated, setGeneratingPrDescription } from '../utils/output.js';
 import { DiffRule, generateDiffs, getDiffsDir, saveDiffs } from '../utils/diff.js';
 import * as cache from '@actions/cache';
 import { TemplateDiff } from '@aws-cdk/cloudformation-diff';
-import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey } from '../utils/shared.js';
+import { CDK_EXPRESS_PIPELINE_JSON_FILE, getCacheKey, parseDisplayTimezones } from '../utils/shared.js';
 import * as jsYaml from 'js-yaml';
 import { PrContext } from './index.js';
 
@@ -18,6 +18,8 @@ export async function generate(prContext: PrContext) {
   if (!Array.isArray(diffRulesParsed)) {
     throw new Error('The "diff-rules" input must be a YAML array.');
   }
+
+  const displayTimezones = parseDisplayTimezones(core.getInput('display-timezones', { required: false }));
 
   const diffRules: DiffRule[] = [];
   for (const rule of diffRulesParsed) {
@@ -33,9 +35,9 @@ export async function generate(prContext: PrContext) {
 
   const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
   const jobName = core.getInput('job-name', { required: false }) || github.context.job;
-  await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash);
+  await setGeneratingPrDescription(owner, repo, pullNumber, githubToken, gitHash, displayTimezones);
   const { cdkSummaryDiff, templateDiffs } = await diff(stackSelectors, cloudAssemblyDirectory);
-  await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash);
+  await outputSummary(githubToken, jobName, cdkSummaryDiff, gitHash, displayTimezones);
   await generateJsonDiffsAndCache(stackSelectors, templateDiffs, cloudAssemblyDirectory, cdkSummaryDiff, diffRules);
 }
 
@@ -152,8 +154,14 @@ async function getCurrentJobUrl(token: string, jobName: string) {
   return currentJob?.id;
 }
 
-async function outputSummary(githubToken: string, jobName: string, cdkSummaryDiff: string, gitHash: string) {
-  const now = getNowFormated();
+async function outputSummary(
+  githubToken: string,
+  jobName: string,
+  cdkSummaryDiff: string,
+  gitHash: string,
+  timezones?: string[]
+) {
+  const now = getNowFormated(timezones);
   let jobText = '';
   const jobId = await getCurrentJobUrl(githubToken, jobName);
   if (jobId) {

@@ -82,6 +82,23 @@ inputs:
                  If a ResourceId has / in its name, it will be replaced with _ to avoid issues with glob matching
 
     required: false
+  display-timezones:
+    description: |
+      A YAML array of IANA timezone names to display alongside the UTC time in the "Generated At" timestamp.
+      Optional for `mode: generate` and `mode: print`.
+
+      Format:
+      ```yaml
+      display-timezones: |
+        - America/New_York
+        - Europe/Paris
+        - Asia/Tokyo
+      ```
+
+      The time will be shown compactly as: `YYYY-MM-DD HH:MM:SS (UTC) | HH:MM:SS (TZ) | ...`
+      If a timezone falls on a different calendar date than UTC, a relative day offset is appended:
+      `HH:MM:SS (+1d) (TZ)` or `HH:MM:SS (-1d) (TZ)`
+    required: false
 runs:
   using: node20
   main: dist/index.cjs
