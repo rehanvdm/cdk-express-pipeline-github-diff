@@ -362,7 +362,7 @@ Some text in between
 
     mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
 
-    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, false);
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, undefined, false);
 
     expect(result).toContain('<details>');
     expect(result).not.toContain('<details open>');
@@ -389,7 +389,7 @@ Some text in between
 
     mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
 
-    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, true);
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, undefined, true);
 
     expect(result).toContain('<details open>');
     expect(result).toMatchSnapshot();

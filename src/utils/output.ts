@@ -137,26 +137,14 @@ export async function updateGithubPrDescription(
   ghToken: string,
   diffs: AssemblyDiff[],
   gitHash: string,
-  timezonesOrExpand?: string[] | boolean,
+  timezones?: string[],
   expandDetails: boolean = true
 ) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
 
-  // Allow the 7th argument to be either a boolean (shorthand for expandDetails)
-  // or a string array (timezones), preserving backward compatibility with callers
-  // that pass both timezones and expandDetails as separate arguments.
-  let timezones: string[] | undefined;
-  let expand: boolean;
-  if (typeof timezonesOrExpand === 'boolean') {
-    timezones = undefined;
-    expand = timezonesOrExpand;
-  } else {
-    timezones = timezonesOrExpand;
-    expand = expandDetails;
-  }
-
   const now = getNowFormated(timezones);
+  const expand = expandDetails;
   let newContent = MARKER_HEADER;
 
   for (const diff of diffs) {

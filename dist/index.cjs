@@ -406613,19 +406613,11 @@ ${GENERATING_MARKER}: ${gitHash} at ${now}`;
   });
   return combinedContent;
 }
-async function updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, timezonesOrExpand, expandDetails = true) {
+async function updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, timezones, expandDetails = true) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
-  let timezones;
-  let expand3;
-  if (typeof timezonesOrExpand === "boolean") {
-    timezones = void 0;
-    expand3 = timezonesOrExpand;
-  } else {
-    timezones = timezonesOrExpand;
-    expand3 = expandDetails;
-  }
   const now = getNowFormated(timezones);
+  const expand3 = expandDetails;
   let newContent = MARKER_HEADER;
   for (const diff2 of diffs) {
     const summaryMarkers = [];
