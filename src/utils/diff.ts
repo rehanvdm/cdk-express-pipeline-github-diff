@@ -252,6 +252,25 @@ function diffRulesToString(diffRules: DiffRule[]) {
     .join(', ');
 }
 
+function resourceDiffRulesToString(appliedRules: { rule: DiffRule; resourceName: string }[]) {
+  if (appliedRules.length === 0) {
+    return '';
+  }
+  const grouped: Record<string, { count: number; resourceNames: Set<string> }> = appliedRules.reduce(
+    (acc, { rule, resourceName }) => {
+      if (!acc[rule.name]) acc[rule.name] = { count: 0, resourceNames: new Set() };
+      acc[rule.name].count++;
+      acc[rule.name].resourceNames.add(resourceName);
+      return acc;
+    },
+    {} as Record<string, { count: number; resourceNames: Set<string> }>
+  );
+  // Create a string like: RuleName(2)[ResourceA, ResourceB], OtherRule(1)[ResourceC]
+  return Object.entries(grouped)
+    .map(([name, { count, resourceNames }]) => `${name}(${count})[${[...resourceNames].join(', ')}]`)
+    .join(', ');
+}
+
 export function extractStackDiffOutput(
   stackIdName: string,
   cdkDiffOutput: string,
@@ -262,7 +281,7 @@ export function extractStackDiffOutput(
     return { markdown: '', diffLines: [] };
   }
   // Top level resources applied to, we need to output it somewhere (for properties we output on the resource line)
-  const resourceRulesApplied: DiffRule[] = [];
+  const resourceRulesApplied: { rule: DiffRule; resourceName: string }[] = [];
 
   const diffLinesOutput: DiffLineOutput[] = [];
   let path: string[] = [];
@@ -314,7 +333,7 @@ export function extractStackDiffOutput(
           if (diffLine.type === 'Resource') {
             if (diffLine.sign === '~') {
               show = false;
-              resourceRulesApplied.push(rule);
+              resourceRulesApplied.push({ rule, resourceName: diffLine.id ?? diffLine.logicalId });
             }
           } else {
             show = false;
@@ -331,9 +350,11 @@ export function extractStackDiffOutput(
             do {
               resourcePropertyIndex = diffLinesOutput.findIndex((l) => l.path.startsWith(resourcePath) && l.show);
               if (resourcePropertyIndex !== -1) {
-                diffLinesOutput[resourcePropertyIndex].show = false;
-                if (diffLinesOutput[resourcePropertyIndex].type === 'Resource') {
-                  resourceRulesApplied.push(rule);
+                const hiddenLine = diffLinesOutput[resourcePropertyIndex];
+                hiddenLine.show = false;
+                if (hiddenLine.type === 'Resource') {
+                  const hiddenResource = hiddenLine as ResourceDiffLine;
+                  resourceRulesApplied.push({ rule, resourceName: hiddenResource.id ?? hiddenResource.logicalId });
                 }
               }
             } while (resourcePropertyIndex !== -1);
@@ -424,14 +445,16 @@ export function extractStackDiffOutput(
 
       if (!hasVisibleChildren) {
         diffLinesOutput[i].show = false;
-        resourceRulesApplied.push(...matchedRules);
+        const resourceLine = line as ResourceDiffLine;
+        const resourceName = resourceLine.id ?? resourceLine.logicalId;
+        resourceRulesApplied.push(...matchedRules.map((r) => ({ rule: r, resourceName })));
       }
     }
   }
 
   const markdown = [];
   if (resourceRulesApplied.length) {
-    markdown.push(`!      {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
+    markdown.push(`!      {Applied Resource Diff Rules: ${resourceDiffRulesToString(resourceRulesApplied)}}`);
   }
   for (const line of diffLinesOutput) {
     if (!line.show) {

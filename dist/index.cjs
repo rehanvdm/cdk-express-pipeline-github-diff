@@ -408306,6 +408306,22 @@ function diffRulesToString(diffRules) {
   );
   return Object.entries(grouped).map(([name, groups]) => `${name}(${groups.length})`).join(", ");
 }
+function resourceDiffRulesToString(appliedRules) {
+  if (appliedRules.length === 0) {
+    return "";
+  }
+  const grouped = appliedRules.reduce(
+    (acc, { rule, resourceName }) => {
+      if (!acc[rule.name])
+        acc[rule.name] = { count: 0, resourceNames: /* @__PURE__ */ new Set() };
+      acc[rule.name].count++;
+      acc[rule.name].resourceNames.add(resourceName);
+      return acc;
+    },
+    {}
+  );
+  return Object.entries(grouped).map(([name, { count, resourceNames }]) => `${name}(${count})[${[...resourceNames].join(", ")}]`).join(", ");
+}
 function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
   const diffLines = extractStackDiffLines(stackIdName, cdkDiffOutput);
   if (!diffLines.length) {
@@ -408351,7 +408367,7 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
           if (diffLine.type === "Resource") {
             if (diffLine.sign === "~") {
               show = false;
-              resourceRulesApplied.push(rule);
+              resourceRulesApplied.push({ rule, resourceName: diffLine.id ?? diffLine.logicalId });
             }
           } else {
             show = false;
@@ -408364,9 +408380,11 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
             do {
               resourcePropertyIndex = diffLinesOutput.findIndex((l6) => l6.path.startsWith(resourcePath) && l6.show);
               if (resourcePropertyIndex !== -1) {
-                diffLinesOutput[resourcePropertyIndex].show = false;
-                if (diffLinesOutput[resourcePropertyIndex].type === "Resource") {
-                  resourceRulesApplied.push(rule);
+                const hiddenLine = diffLinesOutput[resourcePropertyIndex];
+                hiddenLine.show = false;
+                if (hiddenLine.type === "Resource") {
+                  const hiddenResource = hiddenLine;
+                  resourceRulesApplied.push({ rule, resourceName: hiddenResource.id ?? hiddenResource.logicalId });
                 }
               }
             } while (resourcePropertyIndex !== -1);
@@ -408436,13 +408454,15 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
       }
       if (!hasVisibleChildren) {
         diffLinesOutput[i6].show = false;
-        resourceRulesApplied.push(...matchedRules);
+        const resourceLine = line;
+        const resourceName = resourceLine.id ?? resourceLine.logicalId;
+        resourceRulesApplied.push(...matchedRules.map((r6) => ({ rule: r6, resourceName })));
       }
     }
   }
   const markdown = [];
   if (resourceRulesApplied.length) {
-    markdown.push(`!      {Applied Resource Diff Rules: ${diffRulesToString(resourceRulesApplied)}}`);
+    markdown.push(`!      {Applied Resource Diff Rules: ${resourceDiffRulesToString(resourceRulesApplied)}}`);
   }
   for (const line of diffLinesOutput) {
     if (!line.show) {
