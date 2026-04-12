@@ -99,6 +99,12 @@ inputs:
       If a timezone falls on a different calendar date than UTC, a relative day offset is appended:
       `HH:MM:SS (+1d) (TZ)` or `HH:MM:SS (-1d) (TZ)`
     required: false
+  expand-diff:
+    description: |
+      Whether to auto-expand the `<details>` section in the PR description.
+      Optional for `mode: print`.
+      Defaults to 'true'.
+    required: false
 runs:
   using: node20
   main: dist/index.cjs
