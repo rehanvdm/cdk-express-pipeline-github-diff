@@ -341,6 +341,59 @@ Some text in between
     expect(result).toContain('CDK Diff Prod');
     expect(result).toMatchSnapshot();
   });
+
+  it('should render collapsed <details> when expandDetails is false', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: '...',
+        summary: { additions: 1, updates: 0, removals: 0 }
+      }
+    ];
+    const gitHash = 'abc123def456';
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: null }
+    });
+
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, false);
+
+    expect(result).toContain('<details>');
+    expect(result).not.toContain('<details open>');
+    expect(result).toMatchSnapshot();
+  });
+
+  it('should render expanded <details> when expandDetails is true (explicit)', async () => {
+    const owner = 'test-owner';
+    const repo = 'test-repo';
+    const pullNumber = 123;
+    const ghToken = 'test-token';
+    const diffs = [
+      {
+        header: 'CDK Diff',
+        markdown: '...',
+        summary: { additions: 1, updates: 0, removals: 0 }
+      }
+    ];
+    const gitHash = 'abc123def456';
+
+    mockOctokitInstance.rest.pulls.get.mockResolvedValue({
+      data: { body: null }
+    });
+
+    mockOctokitInstance.rest.pulls.update.mockResolvedValue({});
+
+    const result = await updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, true);
+
+    expect(result).toContain('<details open>');
+    expect(result).toMatchSnapshot();
+  });
 });
 
 describe('setGeneratingPrDescription', () => {

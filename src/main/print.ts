@@ -19,6 +19,8 @@ export async function print(prContext: PrContext) {
   const assemblyDiffs: PrintAssemblyDiff[] = [];
   const cloudAssemblyDirectory = core.getInput('cloud-assembly-directory', { required: false });
   const cloudAssemblies = core.getInput('cloud-assemblies', { required: false });
+  const expandDiffInput = core.getInput('expand-diff', { required: false });
+  const expandDetails = expandDiffInput === '' || expandDiffInput.toLowerCase() !== 'false';
 
   if (cloudAssemblyDirectory) {
     assemblyDiffs.push({
@@ -54,7 +56,7 @@ export async function print(prContext: PrContext) {
   const displayTimezones = parseDisplayTimezones(core.getInput('display-timezones', { required: false }));
 
   await restoreCaches(githubToken, assemblyDiffs, pullNumber);
-  await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash, displayTimezones);
+  await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash, displayTimezones, expandDetails);
 }
 
 async function listCachesWithPrefix(token: string, prefix: string, pullNumber: number) {
@@ -137,7 +139,8 @@ async function commentOnPr(
   repo: string,
   pullNumber: number,
   gitHash: string,
-  timezones?: string[]
+  timezones?: string[],
+  expandDetails: boolean
 ) {
   const diffs: AssemblyDiff[] = [];
   for (const assemblyDiff of assemblyDiffs) {
@@ -177,5 +180,5 @@ async function commentOnPr(
     core.info(markdown);
   }
 
-  await updateGithubPrDescription(owner, repo, pullNumber, githubToken, diffs, gitHash, timezones);
+  await updateGithubPrDescription(owner, repo, pullNumber, githubToken, diffs, gitHash, timezones, expandDetails);
 }

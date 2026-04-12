@@ -406613,9 +406613,18 @@ ${GENERATING_MARKER}: ${gitHash} at ${now}`;
   });
   return combinedContent;
 }
-async function updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, timezones) {
+async function updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs, gitHash, timezonesOrExpand, expandDetails = true) {
   const MyOctokit = Octokit.plugin(restEndpointMethods);
   const octokit = new MyOctokit({ auth: ghToken });
+  let timezones;
+  let expand3;
+  if (typeof timezonesOrExpand === "boolean") {
+    timezones = void 0;
+    expand3 = timezonesOrExpand;
+  } else {
+    timezones = timezonesOrExpand;
+    expand3 = expandDetails;
+  }
   const now = getNowFormated(timezones);
   let newContent = MARKER_HEADER;
   for (const diff2 of diffs) {
@@ -406633,7 +406642,7 @@ async function updateGithubPrDescription(owner, repo, pullNumber, ghToken, diffs
     newContent += `
 ## ${diff2.header}
 
-<details open>
+<details${expand3 ? " open" : ""}>
 <summary> Details ${summaryText} </summary>
 
 ${diff2.markdown}
@@ -443264,6 +443273,8 @@ async function print(prContext) {
   const assemblyDiffs = [];
   const cloudAssemblyDirectory = getInput("cloud-assembly-directory", { required: false });
   const cloudAssemblies = getInput("cloud-assemblies", { required: false });
+  const expandDiffInput = getInput("expand-diff", { required: false });
+  const expandDetails = expandDiffInput === "" || expandDiffInput.toLowerCase() !== "false";
   if (cloudAssemblyDirectory) {
     assemblyDiffs.push({
       header: "CDK Diff",
@@ -443295,7 +443306,7 @@ async function print(prContext) {
   const { owner, repo, pullNumber, gitHash, githubToken } = prContext;
   const displayTimezones = parseDisplayTimezones(getInput("display-timezones", { required: false }));
   await restoreCaches(githubToken, assemblyDiffs, pullNumber);
-  await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash, displayTimezones);
+  await commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash, displayTimezones, expandDetails);
 }
 async function listCachesWithPrefix(token, prefix2, pullNumber) {
   const octokit = getOctokit(token);
@@ -443362,7 +443373,7 @@ async function restoreCaches(githubToken, assemblyDiffs, pullNumber) {
     }
   }
 }
-async function commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash, timezones) {
+async function commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, gitHash, timezones, expandDetails) {
   const diffs = [];
   for (const assemblyDiff of assemblyDiffs) {
     const allStackDiffs = getSavedDiffs(assemblyDiff.directory);
@@ -443396,7 +443407,7 @@ async function commentOnPr(githubToken, assemblyDiffs, owner, repo, pullNumber, 
     info(``);
     info(markdown);
   }
-  await updateGithubPrDescription(owner, repo, pullNumber, githubToken, diffs, gitHash, timezones);
+  await updateGithubPrDescription(owner, repo, pullNumber, githubToken, diffs, gitHash, timezones, expandDetails);
 }
 
 // src/main/index.ts

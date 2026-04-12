@@ -104,6 +104,36 @@ exports[`updateGithubPrDescription should handle multiple existing markers and r
 *Generated At: 2024-01-01 12:00:00 (UTC) from commit: abc123def456*"
 `;
 
+exports[`updateGithubPrDescription should render collapsed <details> when expandDetails is false 1`] = `
+"<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->
+<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
+---
+## CDK Diff
+
+<details>
+<summary> Details 🟢1 </summary>
+
+...
+</details>
+
+*Generated At: 2024-01-01 12:00:00 (UTC) from commit: abc123def456*"
+`;
+
+exports[`updateGithubPrDescription should render expanded <details> when expandDetails is true (explicit) 1`] = `
+"<!-- CDK_EXPRESS_PIPELINE_DIFF_MARKER -->
+<!-- DO NOT MAKE CHANGES BELOW THIS LINE, IT WILL BE OVERWRITTEN ON NEXT DIFF -->
+---
+## CDK Diff
+
+<details open>
+<summary> Details 🟢1 </summary>
+
+...
+</details>
+
+*Generated At: 2024-01-01 12:00:00 (UTC) from commit: abc123def456*"
+`;
+
 exports[`updateGithubPrDescription should replace existing marker content with new content 1`] = `
 "This is an existing PR description
 
