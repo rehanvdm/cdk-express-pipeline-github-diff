@@ -17,22 +17,37 @@ export function getNowFormated(additionalTimezones?: string[]) {
     return utcStr;
   }
 
+  // UTC midnight used as the baseline for day-difference calculation
+  const utcMidnight = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+
   const tzParts = additionalTimezones
     .map((tz) => {
       try {
         const parts = new Intl.DateTimeFormat('en-US', {
           timeZone: tz,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
           hour: '2-digit',
           minute: '2-digit',
           second: '2-digit',
           hour12: false,
           timeZoneName: 'short'
         }).formatToParts(now);
+        const year = parseInt(parts.find((p) => p.type === 'year')?.value ?? '0', 10);
+        const month = parseInt(parts.find((p) => p.type === 'month')?.value ?? '1', 10) - 1;
+        const day = parseInt(parts.find((p) => p.type === 'day')?.value ?? '0', 10);
         const hour = parts.find((p) => p.type === 'hour')?.value ?? '';
         const minute = parts.find((p) => p.type === 'minute')?.value ?? '';
         const second = parts.find((p) => p.type === 'second')?.value ?? '';
         const tzName = parts.find((p) => p.type === 'timeZoneName')?.value ?? tz;
-        return `${hour}:${minute}:${second} (${tzName})`;
+
+        // Append a relative day indicator when the local date differs from the UTC date
+        const localMidnight = Date.UTC(year, month, day);
+        const dayDiff = Math.round((localMidnight - utcMidnight) / (1000 * 60 * 60 * 24));
+        const dayIndicator = dayDiff !== 0 ? ` (${dayDiff > 0 ? '+' : ''}${dayDiff}d)` : '';
+
+        return `${hour}:${minute}:${second}${dayIndicator} (${tzName})`;
       } catch {
         return null;
       }

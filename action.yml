@@ -96,6 +96,8 @@ inputs:
       ```
 
       The time will be shown compactly as: `YYYY-MM-DD HH:MM:SS (UTC) | HH:MM:SS (TZ) | ...`
+      If a timezone falls on a different calendar date than UTC, a relative day offset is appended:
+      `HH:MM:SS (+1d) (TZ)` or `HH:MM:SS (-1d) (TZ)`
     required: false
 runs:
   using: node20

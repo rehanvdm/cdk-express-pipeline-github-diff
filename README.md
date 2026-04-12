@@ -87,7 +87,9 @@ The generate mode analyzes your CDK Express Pipeline assembly and creates detail
     - Asia/Tokyo
   ```
 
-  The timestamp will render compactly as: `YYYY-MM-DD HH:MM:SS (UTC) | HH:MM:SS (EST) | HH:MM:SS (CET) | HH:MM:SS (JST)`
+  The timestamp will render compactly as: `YYYY-MM-DD HH:MM:SS (UTC) | HH:MM:SS (EST) | HH:MM:SS (CET) | HH:MM:SS (JST)`.
+  If a timezone falls on a different calendar date than UTC, a relative day offset is appended, e.g.
+  `HH:MM:SS (+1d) (JST)` or `HH:MM:SS (-1d) (PST)`.
 
 #### Diff Rules Examples
 
@@ -501,7 +503,9 @@ The print mode retrieves cached diff data and updates the pull request descripti
     - Asia/Tokyo
   ```
 
-  The timestamp will render compactly as: `YYYY-MM-DD HH:MM:SS (UTC) | HH:MM:SS (EST) | HH:MM:SS (CET) | HH:MM:SS (JST)`
+  The timestamp will render compactly as: `YYYY-MM-DD HH:MM:SS (UTC) | HH:MM:SS (EST) | HH:MM:SS (CET) | HH:MM:SS (JST)`.
+  If a timezone falls on a different calendar date than UTC, a relative day offset is appended, e.g.
+  `HH:MM:SS (+1d) (JST)` or `HH:MM:SS (-1d) (PST)`.
 
 ### Basic - Single Job Diff
 
