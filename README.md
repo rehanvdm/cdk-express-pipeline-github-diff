@@ -507,6 +507,14 @@ The print mode retrieves cached diff data and updates the pull request descripti
   `YYYY-MM-DD HH:MM:SS (UTC) | HH:MM:SS (EST) | HH:MM:SS (CET) | HH:MM:SS (JST)`. If a timezone falls on a different
   calendar date than UTC, a relative day offset is appended, e.g. `HH:MM:SS (+1d) (JST)` or `HH:MM:SS (-1d) (PST)`.
 
+- `expand-diff`: Whether to auto-expand the `<details>` section in the PR description (optional, default: `true`). Set
+  to `'false'` to render the diff section collapsed by default, which is useful when the diff is large and you want to
+  keep the PR description compact.
+
+  ```yaml
+  expand-diff: 'false'
+  ```
+
 ### Basic - Single Job Diff
 
 For simple workflows where you generate and display diffs in a single job.

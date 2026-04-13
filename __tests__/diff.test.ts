@@ -568,4 +568,60 @@ describe('diff.ts', () => {
     const markdown = generateMarkdown(shortHandOrder, stackDiffs!);
     expect(markdown).toMatchSnapshot();
   });
+
+  it('test HIDE_RESOURCE_IF_EMPTY with slash in resource ID', () => {
+    // Regression test: resources whose CDK construct path contains a "/" (produced by L3/nested
+    // constructs, e.g. "NestedConstruct/Lambda") were never hidden by HIDE_RESOURCE_IF_EMPTY
+    // because minimatch's * does not match "/", so the rule path "AWS::Lambda::Function.*"
+    // failed to match "AWS::Lambda::Function.NestedConstruct/Lambda".
+    const stackIdName = 'myStack (MyStack)';
+
+    // Lambda whose only change is an env var — all properties hidden → resource should be hidden.
+    const allHiddenDiff = `Stack myStack (MyStack)
+Resources
+[~] AWS::Lambda::Function NestedConstruct/Lambda NestedConstructLambdaABCD1234
+ └─ [~] Environment
+     └─ [~] .Variables:
+         └─ [~] .ENV_VAR:
+             ├─ [-] original-value
+             └─ [+] updated-value
+✨ Number of stacks with differences: 1`;
+
+    // Lambda with env var + MemorySize change — env var hidden but MemorySize remains visible.
+    const partiallyHiddenDiff = `Stack myStack (MyStack)
+Resources
+[~] AWS::Lambda::Function NestedConstruct/Lambda NestedConstructLambdaABCD1234
+ ├─ [~] Environment
+ │   └─ [~] .Variables:
+ │       └─ [~] .ENV_VAR:
+ │           ├─ [-] original-value
+ │           └─ [+] updated-value
+ └─ [~] MemorySize
+     ├─ [-] 256
+     └─ [+] 512
+✨ Number of stacks with differences: 1`;
+
+    const rules: DiffRule[] = [
+      {
+        name: 'hide-env-var',
+        type: 'HIDE_PROPERTIES',
+        path: 'AWS::Lambda::Function.*.Environment.Variables.ENV_VAR'
+      },
+      {
+        name: 'hide-lambda-if-all-changes-are-hidden',
+        type: 'HIDE_RESOURCE_IF_EMPTY',
+        path: 'AWS::Lambda::Function.*'
+      }
+    ];
+
+    // All changes hidden → HIDE_RESOURCE_IF_EMPTY must fire despite the "/" in the resource ID.
+    const allHiddenResult = extractStackDiffOutput(stackIdName, allHiddenDiff, rules);
+    expect(allHiddenResult.diffLines.find((l) => l.type === 'Resource')?.show).toBe(false);
+    expect(allHiddenResult.markdown).toContain('hide-lambda-if-all-changes-are-hidden(1)[NestedConstruct/Lambda]');
+
+    // Partial hide → MemorySize still visible, resource must NOT be hidden.
+    const partialResult = extractStackDiffOutput(stackIdName, partiallyHiddenDiff, rules);
+    expect(partialResult.diffLines.find((l) => l.type === 'Resource')?.show).toBe(true);
+    expect(partialResult.markdown).toMatch(/\[~\] AWS::Lambda::Function NestedConstruct\/Lambda/);
+  });
 });

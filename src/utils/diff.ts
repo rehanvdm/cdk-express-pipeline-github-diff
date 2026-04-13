@@ -429,9 +429,10 @@ export function extractStackDiffOutput(
       const line = diffLinesOutput[i];
       if (line.type !== 'Resource' || !line.show || line.resourceSign !== '~') continue;
 
-      // The line.path for a Resource is already "ResourceType.ResourceId" with / escaped to _ from the
-      // so it can be used directly for rule matching.
-      const matchedRules = hideIfEmptyRules.filter((r) => minimatch(line.path, r.path));
+      // line.path stores the raw CDK path (e.g. "AWS::Lambda::Function.SESCleanup/Lambda").
+      // minimatch's * does not match /, so we must replace / with _ before matching — consistent
+      // with how HIDE_PROPERTIES matches via pathString.
+      const matchedRules = hideIfEmptyRules.filter((r) => minimatch(line.path.replaceAll('/', '_'), r.path));
       if (matchedRules.length === 0) continue;
 
       let hasVisibleChildren = false;

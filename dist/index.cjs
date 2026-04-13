@@ -408478,7 +408478,7 @@ function extractStackDiffOutput(stackIdName, cdkDiffOutput, diffRules = []) {
       const line = diffLinesOutput[i6];
       if (line.type !== "Resource" || !line.show || line.resourceSign !== "~")
         continue;
-      const matchedRules = hideIfEmptyRules.filter((r6) => minimatch(line.path, r6.path));
+      const matchedRules = hideIfEmptyRules.filter((r6) => minimatch(line.path.replaceAll("/", "_"), r6.path));
       if (matchedRules.length === 0)
         continue;
       let hasVisibleChildren = false;
