@@ -50659,7 +50659,7 @@ var require_io_host_wrappers = __commonJS({
       };
     }
     function stripEmojis(msg) {
-      return msg.replace(new RegExp("\\p{Emoji_Presentation}", "gu"), "");
+      return msg.replace(/\p{Emoji_Presentation}/gu, "");
     }
     function withTrimmedWhitespace(ioHost) {
       return {

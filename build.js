@@ -12,7 +12,7 @@ const buildOptions = {
   entryPoints: [join(__dirname, 'src/index.ts')],
   bundle: true,
   platform: 'node',
-  target: 'node20',
+  target: 'node24',
   format: 'cjs',
   outfile: join(__dirname, 'dist/index.cjs'),
   sourcemap: true,
