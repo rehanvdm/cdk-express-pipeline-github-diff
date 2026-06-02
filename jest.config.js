@@ -28,7 +28,7 @@ export default {
       'esbuild-jest',
       {
         sourcemap: true,
-        target: 'node20'
+        target: 'node24'
       }
     ]
   },
