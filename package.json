@@ -45,7 +45,7 @@
     "@actions/cache": "^6.0.0",
     "@actions/core": "^3.0.0",
     "@actions/github": "^9.0.0",
-    "@aws-cdk/toolkit-lib": "^1.15.1",
+    "@aws-cdk/toolkit-lib": "^1.42.1",
     "@octokit/core": "^7.0.6",
     "@octokit/plugin-rest-endpoint-methods": "^17.0.0",
     "@octokit/webhooks-definitions": "^3.68.1",
